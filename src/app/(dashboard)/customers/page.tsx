@@ -1,23 +1,43 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, customers } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Users } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
+import { Pagination, parsePageParam } from "@/components/dashboard/pagination";
 
 export const metadata = { title: "Customers" };
 
-export default async function CustomersPage() {
+const PAGE_SIZE = 25;
+
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const allCustomers = await db
-    .select()
-    .from(customers)
-    .where(eq(customers.merchantId, userId))
-    .orderBy(desc(customers.totalSpend))
-    .limit(100);
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const [allCustomers, [totalRow]] = await Promise.all([
+    db
+      .select()
+      .from(customers)
+      .where(eq(customers.merchantId, userId))
+      .orderBy(desc(customers.totalSpend))
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from(customers)
+      .where(eq(customers.merchantId, userId)),
+  ]);
+
+  const total = totalRow?.count ?? 0;
 
   return (
     <>
@@ -36,7 +56,7 @@ export default async function CustomersPage() {
               <h2 className="mt-1 font-display text-lg">
                 All customers
                 <span className="ml-2 font-mono text-xs text-muted-foreground">
-                  {allCustomers.length}
+                  {total}
                 </span>
               </h2>
             </div>
@@ -53,50 +73,58 @@ export default async function CustomersPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 bg-muted/30 text-left">
-                    <Th>Name</Th>
-                    <Th>Email</Th>
-                    <Th>Lifetime value</Th>
-                    <Th>Payments</Th>
-                    <Th>First seen</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {allCustomers.map((customer) => (
-                    <tr
-                      key={customer.id}
-                      className="transition-colors hover:bg-muted/30"
-                    >
-                      <Td>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40 font-display text-sm">
-                            {customer.name?.[0]?.toUpperCase() ?? "?"}
-                          </div>
-                          <p className="font-medium">{customer.name}</p>
-                        </div>
-                      </Td>
-                      <Td className="text-muted-foreground">
-                        {customer.email}
-                      </Td>
-                      <Td>
-                        <span className="font-display text-base">
-                          {formatCurrency(customer.totalSpend)}
-                        </span>
-                      </Td>
-                      <Td className="font-mono text-xs text-muted-foreground">
-                        {customer.paymentCount}
-                      </Td>
-                      <Td className="font-mono text-xs text-muted-foreground">
-                        {formatDate(customer.createdAt)}
-                      </Td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-muted/30 text-left">
+                      <Th>Name</Th>
+                      <Th>Email</Th>
+                      <Th>Lifetime value</Th>
+                      <Th>Payments</Th>
+                      <Th>First seen</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {allCustomers.map((customer) => (
+                      <tr
+                        key={customer.id}
+                        className="transition-colors hover:bg-muted/30"
+                      >
+                        <Td>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/40 font-display text-sm">
+                              {customer.name?.[0]?.toUpperCase() ?? "?"}
+                            </div>
+                            <p className="font-medium">{customer.name}</p>
+                          </div>
+                        </Td>
+                        <Td className="text-muted-foreground">
+                          {customer.email}
+                        </Td>
+                        <Td>
+                          <span className="font-display text-base">
+                            {formatCurrency(customer.totalSpend)}
+                          </span>
+                        </Td>
+                        <Td className="font-mono text-xs text-muted-foreground">
+                          {customer.paymentCount}
+                        </Td>
+                        <Td className="font-mono text-xs text-muted-foreground">
+                          {formatDate(customer.createdAt)}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                basePath="/customers"
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+              />
+            </>
           )}
         </div>
       </div>

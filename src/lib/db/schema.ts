@@ -52,6 +52,8 @@ export const auditActionEnum = pgEnum("audit_action", [
   "wallet_credited",
   "wallet_debited",
   "abandoned_checkout_reminded",
+  "settings_updated",
+  "customer_unsubscribed",
 ]);
 
 export const campaignChannelEnum = pgEnum("campaign_channel", ["email", "sms"]);
@@ -135,6 +137,11 @@ export const customers = pgTable(
     stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
     totalSpend: bigint("total_spend", { mode: "number" }).notNull().default(0), // in cents
     paymentCount: integer("payment_count").notNull().default(0),
+    // Opt-out timestamps for marketing. Non-null = customer asked us to
+    // stop. Filtered out of all campaign sends. Set via email unsubscribe
+    // links or inbound SMS STOP handler.
+    emailOptOutAt: timestamp("email_opt_out_at"),
+    smsOptOutAt: timestamp("sms_opt_out_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

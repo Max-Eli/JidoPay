@@ -1,19 +1,30 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, abandonedCheckouts, merchants } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc, count, sum } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ShoppingCart } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { FeatureToggle } from "@/components/dashboard/feature-toggle";
 import { RemindButton } from "@/components/dashboard/remind-button";
+import { Pagination, parsePageParam } from "@/components/dashboard/pagination";
 
 export const metadata = { title: "Cart Recovery" };
 
-export default async function RecoveryPage() {
+const PAGE_SIZE = 25;
+
+export default async function RecoveryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
+
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const offset = (page - 1) * PAGE_SIZE;
 
   const [merchant] = await db
     .select()
@@ -21,19 +32,44 @@ export default async function RecoveryPage() {
     .where(eq(merchants.id, userId));
   if (!merchant) redirect("/sign-in");
 
-  const list = await db
-    .select()
-    .from(abandonedCheckouts)
-    .where(eq(abandonedCheckouts.merchantId, userId))
-    .orderBy(desc(abandonedCheckouts.createdAt))
-    .limit(100);
+  // Stats are computed via aggregate queries across the full table —
+  // never across the paginated window — so the dashboard numbers stay
+  // accurate even when the list paginates.
+  const [list, [totalRow], [pendingAgg], [recoveredAgg]] = await Promise.all([
+    db
+      .select()
+      .from(abandonedCheckouts)
+      .where(eq(abandonedCheckouts.merchantId, userId))
+      .orderBy(desc(abandonedCheckouts.createdAt))
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from(abandonedCheckouts)
+      .where(eq(abandonedCheckouts.merchantId, userId)),
+    db
+      .select({ total: sum(abandonedCheckouts.amount) })
+      .from(abandonedCheckouts)
+      .where(
+        and(
+          eq(abandonedCheckouts.merchantId, userId),
+          eq(abandonedCheckouts.status, "pending")
+        )
+      ),
+    db
+      .select({ total: sum(abandonedCheckouts.amount) })
+      .from(abandonedCheckouts)
+      .where(
+        and(
+          eq(abandonedCheckouts.merchantId, userId),
+          eq(abandonedCheckouts.status, "recovered")
+        )
+      ),
+  ]);
 
-  const pendingValue = list
-    .filter((r) => r.status === "pending")
-    .reduce((s, r) => s + r.amount, 0);
-  const recoveredValue = list
-    .filter((r) => r.status === "recovered")
-    .reduce((s, r) => s + r.amount, 0);
+  const total = totalRow?.count ?? 0;
+  const pendingValue = Number(pendingAgg?.total ?? 0);
+  const recoveredValue = Number(recoveredAgg?.total ?? 0);
 
   return (
     <>
@@ -65,7 +101,7 @@ export default async function RecoveryPage() {
           <div className="grid grid-cols-3 divide-x divide-border/60">
             <Stat label="Pending value" value={formatCurrency(pendingValue)} />
             <Stat label="Recovered" value={formatCurrency(recoveredValue)} />
-            <Stat label="Total checkouts" value={list.length.toString()} />
+            <Stat label="Total checkouts" value={total.toString()} />
           </div>
         </section>
 
@@ -77,7 +113,7 @@ export default async function RecoveryPage() {
             <h2 className="mt-1 font-display text-lg">
               Abandoned checkouts
               <span className="ml-2 font-mono text-xs text-muted-foreground">
-                {list.length}
+                {total}
               </span>
             </h2>
           </div>
@@ -94,32 +130,40 @@ export default async function RecoveryPage() {
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-border/60">
-              {list.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-muted/30"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3">
-                      <p className="truncate font-display text-lg">
-                        {row.customerName ?? row.customerEmail ?? "Anonymous"}
-                      </p>
-                      <StatusPill status={row.status} />
+            <>
+              <ul className="divide-y divide-border/60">
+                {list.map((row) => (
+                  <li
+                    key={row.id}
+                    className="flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-muted/30"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3">
+                        <p className="truncate font-display text-lg">
+                          {row.customerName ?? row.customerEmail ?? "Anonymous"}
+                        </p>
+                        <StatusPill status={row.status} />
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <span className="text-foreground">
+                          {formatCurrency(row.amount, row.currency)}
+                        </span>
+                        {row.customerEmail && <span>{row.customerEmail}</span>}
+                        {row.customerPhone && <span>{row.customerPhone}</span>}
+                        <span>Left {formatDate(row.createdAt)}</span>
+                      </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                      <span className="text-foreground">
-                        {formatCurrency(row.amount, row.currency)}
-                      </span>
-                      {row.customerEmail && <span>{row.customerEmail}</span>}
-                      {row.customerPhone && <span>{row.customerPhone}</span>}
-                      <span>Left {formatDate(row.createdAt)}</span>
-                    </div>
-                  </div>
-                  {row.status === "pending" && <RemindButton id={row.id} />}
-                </li>
-              ))}
-            </ul>
+                    {row.status === "pending" && <RemindButton id={row.id} />}
+                  </li>
+                ))}
+              </ul>
+              <Pagination
+                basePath="/recovery"
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+              />
+            </>
           )}
         </section>
       </div>

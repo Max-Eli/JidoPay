@@ -40,11 +40,18 @@ export function dollarsToCents(dollars: number): number {
 }
 
 /**
- * Platform application fee in cents. Minimum 1 cent.
+ * Platform application fee in cents.
  *
- * Direct charges on the connected account already subtract Stripe's
- * ~2.9% + $0.30 processing fee. Charging an additional 0.6% brings the
- * merchant's total cost to the advertised 3.5% + $0.30.
+ * On direct charges, Stripe already keeps 2.9% + $0.30 of the gross
+ * amount. To land on the advertised total of 3.5% + $0.30, our platform
+ * fee must equal the remaining 0.6% of the gross — computed on the full
+ * amount, not the net, because Stripe's 2.9% applies to gross too.
+ *
+ *   gross * 0.029 + 30  →  Stripe
+ *   gross * 0.006       →  JidoPay
+ *   gross * 0.965 - 30  →  Merchant take-home
+ *
+ * Minimum 1 cent so Stripe never rejects the fee as zero.
  */
 export function calculateApplicationFee(amountInCents: number): number {
   return Math.max(1, Math.round(amountInCents * 0.006));

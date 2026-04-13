@@ -5,6 +5,7 @@ let redis: Redis | null = null;
 let ratelimit: Ratelimit | null = null;
 let aiRatelimit: Ratelimit | null = null;
 let publicRatelimit: Ratelimit | null = null;
+let campaignRatelimit: Ratelimit | null = null;
 
 function getRedis(): Redis {
   if (!redis) {
@@ -43,6 +44,22 @@ export function getPublicRatelimit(): Ratelimit {
     });
   }
   return publicRatelimit;
+}
+
+/**
+ * Campaign send rate limit: 3 per hour per merchant. Sends are expensive
+ * (Twilio/Resend bills) and irreversible — keep this tight.
+ */
+export function getCampaignRatelimit(): Ratelimit {
+  if (!campaignRatelimit) {
+    campaignRatelimit = new Ratelimit({
+      redis: getRedis(),
+      limiter: Ratelimit.slidingWindow(3, "1 h"),
+      analytics: true,
+      prefix: "jidopay:campaign",
+    });
+  }
+  return campaignRatelimit;
 }
 
 /** AI endpoint rate limit: 20 requests per minute per user */

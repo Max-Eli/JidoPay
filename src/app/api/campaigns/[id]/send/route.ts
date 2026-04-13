@@ -8,13 +8,22 @@ import {
   auditLogs,
   abandonedCheckouts,
 } from "@/lib/db";
-import { and, eq, gt, lt, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { sendSms, isTwilioConfigured } from "@/lib/twilio";
 import { generateId } from "@/lib/utils";
-import { getAiRatelimit } from "@/lib/ratelimit";
+import { getCampaignRatelimit } from "@/lib/ratelimit";
+import { buildUnsubscribeUrl } from "@/lib/unsubscribe";
+
+// Hard cap: the largest single campaign blast we're willing to process
+// inline. Anything above this should be paginated into a background job.
+// At 10k SMS at ~$0.0079/msg that's ~$80 max exposure per request.
+const MAX_RECIPIENTS = 10_000;
 
 type Recipient = {
+  // customerId is present for customer-audience sends (all/repeat/inactive),
+  // absent for abandoned checkouts which aren't tied to a customer row.
+  customerId: string | null;
   name: string | null;
   email: string | null;
   phone: string | null;
@@ -38,10 +47,11 @@ async function resolveAudience(
           eq(abandonedCheckouts.merchantId, merchantId),
           eq(abandonedCheckouts.status, "pending")
         )
-      );
-    return rows.filter((r) =>
-      channel === "email" ? !!r.email : !!r.phone
-    );
+      )
+      .limit(MAX_RECIPIENTS);
+    return rows
+      .filter((r) => (channel === "email" ? !!r.email : !!r.phone))
+      .map((r) => ({ ...r, customerId: null }));
   }
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -53,14 +63,24 @@ async function resolveAudience(
     conditions.push(lt(customers.updatedAt, thirtyDaysAgo));
   }
 
+  // Enforce opt-out: never message customers who have unsubscribed from
+  // the channel we're sending on. This is TCPA/CAN-SPAM critical.
+  if (channel === "email") {
+    conditions.push(isNull(customers.emailOptOutAt));
+  } else {
+    conditions.push(isNull(customers.smsOptOutAt));
+  }
+
   const rows = await db
     .select({
+      customerId: customers.id,
       name: customers.name,
       email: customers.email,
       phone: customers.phone,
     })
     .from(customers)
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .limit(MAX_RECIPIENTS);
 
   return rows.filter((r) => (channel === "email" ? !!r.email : !!r.phone));
 }
@@ -79,11 +99,17 @@ export async function POST(
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rl = getAiRatelimit();
+  // Strict per-merchant send limit — 3/hour is enough to send three
+  // audiences or three retries without letting a compromised session
+  // blast the entire customer base repeatedly.
+  const rl = getCampaignRatelimit();
   const { success } = await rl.limit(`campaign:${userId}`);
   if (!success)
     return NextResponse.json(
-      { error: "Too many send requests. Try again shortly." },
+      {
+        error:
+          "Campaign send limit reached (3 per hour). Try again in a little while.",
+      },
       { status: 429 }
     );
 
@@ -125,6 +151,8 @@ export async function POST(
     .from(merchants)
     .where(eq(merchants.id, userId));
 
+  // Mark as "sending" before we resolve the audience so a second
+  // concurrent POST hits the "already sending" guard above.
   await db
     .update(campaigns)
     .set({ status: "sending", updatedAt: new Date() })
@@ -136,6 +164,21 @@ export async function POST(
     campaign.channel
   );
 
+  if (recipients.length >= MAX_RECIPIENTS) {
+    // Don't silently truncate — fail loud so the merchant understands
+    // their audience was too large and can split it.
+    await db
+      .update(campaigns)
+      .set({ status: "draft", updatedAt: new Date() })
+      .where(eq(campaigns.id, id));
+    return NextResponse.json(
+      {
+        error: `Audience exceeds the ${MAX_RECIPIENTS.toLocaleString()} recipient cap per send. Split the campaign into smaller segments.`,
+      },
+      { status: 413 }
+    );
+  }
+
   let sent = 0;
   let failed = 0;
 
@@ -145,15 +188,34 @@ export async function POST(
       recipient,
       merchant?.businessName ?? null
     );
+
+    // Build channel-appropriate opt-out footer. CAN-SPAM requires an
+    // unsubscribe mechanism in every marketing email; TCPA/CTIA requires
+    // "Reply STOP" in every marketing SMS.
+    const unsubUrl = recipient.customerId
+      ? buildUnsubscribeUrl({
+          customerId: recipient.customerId,
+          merchantId: userId,
+          channel: campaign.channel,
+        })
+      : null;
+
     if (campaign.channel === "email") {
+      const footer = unsubUrl
+        ? `\n\n—\nUnsubscribe from these emails: ${unsubUrl}`
+        : "";
       const res = await sendEmail({
         to: recipient.email!,
         subject: campaign.subject ?? "A message from " + (merchant?.businessName ?? "your vendor"),
-        text: body,
+        text: body + footer,
       });
       res.ok ? sent++ : failed++;
     } else {
-      const res = await sendSms({ to: recipient.phone!, body });
+      const footer = " Reply STOP to opt out.";
+      const res = await sendSms({
+        to: recipient.phone!,
+        body: body + footer,
+      });
       res.ok ? sent++ : failed++;
     }
   }

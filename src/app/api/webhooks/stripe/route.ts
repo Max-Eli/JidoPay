@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Idempotency check ────────────────────────────────────────────────────
+  // Only treat an event as already-processed if there's a webhook_events row
+  // AND processing actually completed last time. We mark the row with
+  // processedAt = NULL while a handler is in flight so a crash before
+  // completion allows Stripe's retry to re-enter the handler.
   const [existing] = await db
     .select()
     .from(webhookEvents)
@@ -48,13 +52,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
-  // Record event immediately to prevent duplicate processing
-  await db.insert(webhookEvents).values({ id: event.id, type: event.type });
-
   // event.account is present when the event originates from a connected account
   const connectedAccountId = (event as Stripe.Event & { account?: string }).account ?? null;
 
   // ── Handle events ────────────────────────────────────────────────────────
+  // If a handler throws (DB blip, connection error, etc.) we return 5xx so
+  // Stripe retries. The webhook_events row is only written *after* the
+  // handler succeeds, so retries will re-enter cleanly.
   try {
     switch (event.type) {
       case "payment_intent.succeeded": {
@@ -94,10 +98,21 @@ export async function POST(req: NextRequest) {
         // Unhandled event types are fine — we just record them
         break;
     }
+
+    // Only mark the event processed once the handler succeeds.
+    // onConflictDoNothing guards against a narrow race where two retries
+    // from Stripe arrive simultaneously.
+    await db
+      .insert(webhookEvents)
+      .values({ id: event.id, type: event.type })
+      .onConflictDoNothing();
   } catch (err) {
     console.error(`Error processing webhook ${event.type}:`, err);
-    // Return 200 so Stripe doesn't retry — log the error for monitoring
-    // In production, send to error tracking (Sentry, etc.)
+    // Return 5xx so Stripe retries. Do NOT mark the event processed.
+    return NextResponse.json(
+      { error: "Webhook handler failed" },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ received: true });

@@ -69,26 +69,13 @@ export async function POST(
     ? `Hi ${name}, you left a ${amountStr} checkout at ${business}. Finish here: ${linkUrl}`
     : `Hi ${name}, you left a ${amountStr} checkout at ${business}. Come back anytime to finish!`;
 
-  // Prefer SMS if phone present, else email
-  let delivered = false;
-  let channel: "sms" | "email" | null = null;
-  let error: string | null = null;
+  // Prefer SMS if phone present, but if SMS fails (or isn't configured)
+  // fall back to email automatically. We only give up if *both* channels
+  // have been tried (or are unavailable).
+  const canSms = !!row.customerPhone && isTwilioConfigured();
+  const canEmail = !!row.customerEmail && isEmailConfigured();
 
-  if (row.customerPhone && isTwilioConfigured()) {
-    const res = await sendSms({ to: row.customerPhone, body: message });
-    delivered = res.ok;
-    channel = "sms";
-    if (!res.ok) error = res.error;
-  } else if (row.customerEmail && isEmailConfigured()) {
-    const res = await sendEmail({
-      to: row.customerEmail,
-      subject: `You left ${amountStr} behind`,
-      text: message,
-    });
-    delivered = res.ok;
-    channel = "email";
-    if (!res.ok) error = res.error;
-  } else {
+  if (!canSms && !canEmail) {
     return NextResponse.json(
       {
         error:
@@ -98,9 +85,46 @@ export async function POST(
     );
   }
 
+  const attempts: Array<{ channel: "sms" | "email"; error: string }> = [];
+  let delivered = false;
+  let channel: "sms" | "email" | null = null;
+
+  if (canSms) {
+    const res = await sendSms({ to: row.customerPhone!, body: message });
+    if (res.ok) {
+      delivered = true;
+      channel = "sms";
+    } else {
+      attempts.push({ channel: "sms", error: res.error });
+    }
+  }
+
+  if (!delivered && canEmail) {
+    const res = await sendEmail({
+      to: row.customerEmail!,
+      subject: `You left ${amountStr} behind`,
+      text: message,
+    });
+    if (res.ok) {
+      delivered = true;
+      channel = "email";
+    } else {
+      attempts.push({ channel: "email", error: res.error });
+    }
+  }
+
   if (!delivered) {
+    // Surface the specific channel failures so the merchant can debug
+    // rather than showing a generic "failed" message in the UI.
     return NextResponse.json(
-      { error: error ?? "Failed to send reminder" },
+      {
+        error:
+          attempts.length > 0
+            ? `Failed to send reminder: ${attempts
+                .map((a) => `${a.channel} (${a.error})`)
+                .join("; ")}`
+            : "Failed to send reminder",
+      },
       { status: 502 }
     );
   }

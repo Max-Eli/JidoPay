@@ -1,25 +1,45 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, invoices } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { FileText, Plus, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { Pagination, parsePageParam } from "@/components/dashboard/pagination";
 
 export const metadata = { title: "Invoices" };
 
-export default async function InvoicesPage() {
+const PAGE_SIZE = 25;
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const allInvoices = await db
-    .select()
-    .from(invoices)
-    .where(eq(invoices.merchantId, userId))
-    .orderBy(desc(invoices.createdAt))
-    .limit(100);
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const [allInvoices, [totalRow]] = await Promise.all([
+    db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.merchantId, userId))
+      .orderBy(desc(invoices.createdAt))
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from(invoices)
+      .where(eq(invoices.merchantId, userId)),
+  ]);
+
+  const total = totalRow?.count ?? 0;
 
   return (
     <>
@@ -47,7 +67,7 @@ export default async function InvoicesPage() {
               <h2 className="mt-1 font-display text-lg">
                 All invoices
                 <span className="ml-2 font-mono text-xs text-muted-foreground">
-                  {allInvoices.length}
+                  {total}
                 </span>
               </h2>
             </div>
@@ -71,55 +91,63 @@ export default async function InvoicesPage() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 bg-muted/30 text-left">
-                    <Th>Invoice</Th>
-                    <Th>Customer</Th>
-                    <Th>Amount</Th>
-                    <Th>Status</Th>
-                    <Th>Due</Th>
-                    <Th>Created</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {allInvoices.map((invoice) => (
-                    <tr
-                      key={invoice.id}
-                      className="cursor-pointer transition-colors hover:bg-muted/30"
-                    >
-                      <Td className="font-mono text-xs text-muted-foreground">
-                        {invoice.invoiceNumber}
-                      </Td>
-                      <Td>
-                        <p className="font-medium">{invoice.customerName}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {invoice.customerEmail}
-                        </p>
-                      </Td>
-                      <Td>
-                        <span className="font-display text-base">
-                          {formatCurrency(
-                            invoice.totalAmount,
-                            invoice.currency
-                          )}
-                        </span>
-                      </Td>
-                      <Td>
-                        <StatusPill status={invoice.status} />
-                      </Td>
-                      <Td className="font-mono text-xs text-muted-foreground">
-                        {formatDate(invoice.dueDate)}
-                      </Td>
-                      <Td className="font-mono text-xs text-muted-foreground">
-                        {formatDate(invoice.createdAt)}
-                      </Td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-muted/30 text-left">
+                      <Th>Invoice</Th>
+                      <Th>Customer</Th>
+                      <Th>Amount</Th>
+                      <Th>Status</Th>
+                      <Th>Due</Th>
+                      <Th>Created</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {allInvoices.map((invoice) => (
+                      <tr
+                        key={invoice.id}
+                        className="cursor-pointer transition-colors hover:bg-muted/30"
+                      >
+                        <Td className="font-mono text-xs text-muted-foreground">
+                          {invoice.invoiceNumber}
+                        </Td>
+                        <Td>
+                          <p className="font-medium">{invoice.customerName}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {invoice.customerEmail}
+                          </p>
+                        </Td>
+                        <Td>
+                          <span className="font-display text-base">
+                            {formatCurrency(
+                              invoice.totalAmount,
+                              invoice.currency
+                            )}
+                          </span>
+                        </Td>
+                        <Td>
+                          <StatusPill status={invoice.status} />
+                        </Td>
+                        <Td className="font-mono text-xs text-muted-foreground">
+                          {formatDate(invoice.dueDate)}
+                        </Td>
+                        <Td className="font-mono text-xs text-muted-foreground">
+                          {formatDate(invoice.createdAt)}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                basePath="/invoices"
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+              />
+            </>
           )}
         </div>
       </div>

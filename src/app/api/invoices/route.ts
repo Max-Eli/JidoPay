@@ -83,7 +83,9 @@ export async function POST(req: NextRequest) {
 
   const invoiceId = generateId("inv");
 
-  // Create Stripe Payment Intent on the connected account
+  // Create Stripe Payment Intent on the connected account.
+  // Idempotency key is derived from (merchantId, invoiceId) so a retried
+  // POST of the same logical invoice never creates a duplicate charge.
   const appFee = calculateApplicationFee(totalAmount);
   const paymentIntent = await stripe.paymentIntents.create(
     {
@@ -99,7 +101,10 @@ export async function POST(req: NextRequest) {
       receipt_email: data.customerEmail,
       description: `Invoice ${invoiceNumber} from ${merchant.businessName ?? "merchant"}`,
     },
-    { stripeAccount: merchant.stripeAccountId }
+    {
+      stripeAccount: merchant.stripeAccountId,
+      idempotencyKey: `invoice_${userId}_${invoiceId}`,
+    }
   );
 
   // Insert invoice + items

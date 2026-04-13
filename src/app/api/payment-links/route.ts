@@ -53,14 +53,19 @@ export async function POST(req: NextRequest) {
   const linkId = generateId("lnk");
   const appFee = calculateApplicationFee(data.amount);
 
-  // Create Stripe price + payment link on the connected account
+  // Create Stripe price + payment link on the connected account.
+  // Idempotency keys keyed on our internal linkId prevent duplicate
+  // Stripe objects if the client retries after a dropped connection.
   const price = await stripe.prices.create(
     {
       currency: data.currency,
       unit_amount: data.amount,
       product_data: { name: data.name },
     },
-    { stripeAccount: merchant.stripeAccountId }
+    {
+      stripeAccount: merchant.stripeAccountId,
+      idempotencyKey: `price_${linkId}`,
+    }
   );
 
   const stripePaymentLink = await stripe.paymentLinks.create(
@@ -86,7 +91,10 @@ export async function POST(req: NextRequest) {
         redirect: { url: `${process.env.NEXT_PUBLIC_APP_URL}/pay/success` },
       },
     },
-    { stripeAccount: merchant.stripeAccountId }
+    {
+      stripeAccount: merchant.stripeAccountId,
+      idempotencyKey: `paylink_${linkId}`,
+    }
   );
 
   const [link] = await db

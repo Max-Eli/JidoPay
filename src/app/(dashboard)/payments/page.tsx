@@ -1,24 +1,44 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, payments } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { CreditCard } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { Pagination, parsePageParam } from "@/components/dashboard/pagination";
 
 export const metadata = { title: "Payments" };
 
-export default async function PaymentsPage() {
+const PAGE_SIZE = 25;
+
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const allPayments = await db
-    .select()
-    .from(payments)
-    .where(eq(payments.merchantId, userId))
-    .orderBy(desc(payments.createdAt))
-    .limit(100);
+  const params = await searchParams;
+  const page = parsePageParam(params.page);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const [allPayments, [totalRow]] = await Promise.all([
+    db
+      .select()
+      .from(payments)
+      .where(eq(payments.merchantId, userId))
+      .orderBy(desc(payments.createdAt))
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from(payments)
+      .where(eq(payments.merchantId, userId)),
+  ]);
+
+  const total = totalRow?.count ?? 0;
 
   return (
     <>
@@ -37,7 +57,7 @@ export default async function PaymentsPage() {
               <h2 className="mt-1 font-display text-lg">
                 All payments
                 <span className="ml-2 font-mono text-xs text-muted-foreground">
-                  {allPayments.length}
+                  {total}
                 </span>
               </h2>
             </div>
@@ -50,59 +70,67 @@ export default async function PaymentsPage() {
               description="Transactions will appear here as your customers pay."
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 bg-muted/30 text-left">
-                    <Th>Customer</Th>
-                    <Th>Amount</Th>
-                    <Th>Platform fee</Th>
-                    <Th>Status</Th>
-                    <Th>Date</Th>
-                    <Th>Description</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {allPayments.map((payment) => (
-                    <tr
-                      key={payment.id}
-                      className="transition-colors hover:bg-muted/30"
-                    >
-                      <Td>
-                        <p className="font-medium">
-                          {payment.customerName ?? "Anonymous"}
-                        </p>
-                        {payment.customerEmail && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {payment.customerEmail}
-                          </p>
-                        )}
-                      </Td>
-                      <Td>
-                        <span className="font-display text-base">
-                          {formatCurrency(payment.amount, payment.currency)}
-                        </span>
-                      </Td>
-                      <Td className="text-muted-foreground">
-                        {formatCurrency(
-                          payment.applicationFee,
-                          payment.currency
-                        )}
-                      </Td>
-                      <Td>
-                        <StatusPill status={payment.status} />
-                      </Td>
-                      <Td className="font-mono text-xs text-muted-foreground">
-                        {formatDate(payment.createdAt)}
-                      </Td>
-                      <Td className="max-w-[200px] truncate text-muted-foreground">
-                        {payment.description ?? "—"}
-                      </Td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-muted/30 text-left">
+                      <Th>Customer</Th>
+                      <Th>Amount</Th>
+                      <Th>Platform fee</Th>
+                      <Th>Status</Th>
+                      <Th>Date</Th>
+                      <Th>Description</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {allPayments.map((payment) => (
+                      <tr
+                        key={payment.id}
+                        className="transition-colors hover:bg-muted/30"
+                      >
+                        <Td>
+                          <p className="font-medium">
+                            {payment.customerName ?? "Anonymous"}
+                          </p>
+                          {payment.customerEmail && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {payment.customerEmail}
+                            </p>
+                          )}
+                        </Td>
+                        <Td>
+                          <span className="font-display text-base">
+                            {formatCurrency(payment.amount, payment.currency)}
+                          </span>
+                        </Td>
+                        <Td className="text-muted-foreground">
+                          {formatCurrency(
+                            payment.applicationFee,
+                            payment.currency
+                          )}
+                        </Td>
+                        <Td>
+                          <StatusPill status={payment.status} />
+                        </Td>
+                        <Td className="font-mono text-xs text-muted-foreground">
+                          {formatDate(payment.createdAt)}
+                        </Td>
+                        <Td className="max-w-[200px] truncate text-muted-foreground">
+                          {payment.description ?? "—"}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                basePath="/payments"
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+              />
+            </>
           )}
         </div>
       </div>

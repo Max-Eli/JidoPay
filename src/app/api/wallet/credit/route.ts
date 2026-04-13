@@ -121,8 +121,19 @@ export async function POST(req: NextRequest) {
     action: type === "credit" ? "wallet_credited" : "wallet_debited",
     resourceId: wallet.id,
     resourceType: "wallet",
-    metadata: JSON.stringify({ customerId, amount, note }),
-    ipAddress: req.headers.get("x-forwarded-for") ?? null,
+    // Capture before/after balance so a compromised session's activity
+    // can be fully reconstructed for dispute/chargeback resolution.
+    metadata: JSON.stringify({
+      customerId,
+      amount,
+      balanceBefore: wallet.balance,
+      balanceAfter: newBalance,
+      note,
+    }),
+    ipAddress:
+      req.headers.get("x-forwarded-for") ??
+      req.headers.get("x-real-ip") ??
+      null,
   });
 
   return NextResponse.json({ ok: true, balance: newBalance });

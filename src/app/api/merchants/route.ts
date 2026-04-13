@@ -1,8 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { db, merchants } from "@/lib/db";
+import { db, merchants, auditLogs } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { generateId } from "@/lib/utils";
 
 const updateMerchantSchema = z.object({
   businessName: z.string().max(255).optional(),
@@ -72,11 +73,48 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Validation failed" }, { status: 422 });
   }
 
+  // Read the current row first so we can capture a before/after diff
+  // in the audit log. Settings changes are sensitive (they flip feature
+  // flags that affect customer data handling) and we need a trail.
+  const [before] = await db
+    .select()
+    .from(merchants)
+    .where(eq(merchants.id, userId));
+
+  if (!before) {
+    return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
+  }
+
   const [merchant] = await db
     .update(merchants)
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(merchants.id, userId))
     .returning();
+
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
+  for (const key of Object.keys(parsed.data) as Array<keyof typeof parsed.data>) {
+    const next = parsed.data[key];
+    if (next === undefined) continue;
+    const prev = before[key as keyof typeof before];
+    if (prev !== next) {
+      changes[key] = { from: prev, to: next };
+    }
+  }
+
+  if (Object.keys(changes).length > 0) {
+    await db.insert(auditLogs).values({
+      id: generateId("aud"),
+      merchantId: userId,
+      action: "settings_updated",
+      resourceId: userId,
+      resourceType: "merchant_settings",
+      metadata: JSON.stringify({ changes }),
+      ipAddress:
+        req.headers.get("x-forwarded-for") ??
+        req.headers.get("x-real-ip") ??
+        null,
+    });
+  }
 
   return NextResponse.json({ merchant });
 }
