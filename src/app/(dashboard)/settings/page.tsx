@@ -1,0 +1,174 @@
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { db, merchants } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { SettingsForm } from "@/components/dashboard/settings-form";
+import { Topbar } from "@/components/dashboard/topbar";
+import { StatusPill } from "@/components/dashboard/status-pill";
+import { FeatureToggle } from "@/components/dashboard/feature-toggle";
+
+export const metadata = { title: "Settings" };
+
+export default async function SettingsPage() {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const [merchant] = await db
+    .select()
+    .from(merchants)
+    .where(eq(merchants.id, userId));
+
+  if (!merchant) redirect("/sign-in");
+
+  return (
+    <>
+      <Topbar
+        title="Settings"
+        description="Manage your business profile and payout configuration."
+      />
+
+      <div className="mx-auto max-w-3xl space-y-6 px-8 py-10">
+        <Section
+          eyebrow="Profile"
+          title="Business details"
+          description="This name appears on your invoices and payment pages."
+        >
+          <SettingsForm
+            merchantId={merchant.id}
+            businessName={merchant.businessName ?? ""}
+          />
+        </Section>
+
+        <Section
+          eyebrow="Payouts"
+          title="Account status"
+          description="Your connected payout account handles all payment processing."
+        >
+          <div className="space-y-4">
+            <StatusRow
+              label="Onboarding complete"
+              ok={!!merchant.stripeOnboardingComplete}
+            />
+            <StatusRow
+              label="Charges enabled"
+              ok={!!merchant.stripeChargesEnabled}
+            />
+            <StatusRow
+              label="Payouts enabled"
+              ok={!!merchant.stripePayoutsEnabled}
+            />
+
+            {merchant.stripeAccountId && (
+              <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Account ID
+                </p>
+                <p className="mt-1 font-mono text-xs text-foreground">
+                  {merchant.stripeAccountId}
+                </p>
+              </div>
+            )}
+          </div>
+        </Section>
+
+        <Section
+          eyebrow="Features"
+          title="Customer experience"
+          description="Opt-in tools to boost conversion and loyalty."
+        >
+          <div className="divide-y divide-border/60">
+            <FeatureRow
+              title="One-click pay"
+              description="Save returning customers' payment details so they can check out with a single click on future payment links."
+              flag="oneClickPayEnabled"
+              initial={merchant.oneClickPayEnabled}
+            />
+            <FeatureRow
+              title="Customer wallets"
+              description="Offer stored-value balances your customers can spend against — useful for store credit, refunds, and loyalty."
+              flag="walletEnabled"
+              initial={merchant.walletEnabled}
+            />
+            <FeatureRow
+              title="Abandoned cart recovery"
+              description="Automatically capture expired checkout sessions so you can send SMS or email reminders."
+              flag="abandonedRecoveryEnabled"
+              initial={merchant.abandonedRecoveryEnabled}
+            />
+          </div>
+        </Section>
+
+        <Section eyebrow="Pricing" title="Platform fee">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            JidoPay charges a{" "}
+            <span className="font-display text-foreground">0.5%</span> platform
+            fee on every successful transaction. Standard processing fees from
+            our payments partner apply separately (typically 2.9% + $0.30 per
+            card transaction).
+          </p>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+            Example: on a $100 payment, you receive ~$96.70 after all fees
+          </p>
+        </Section>
+      </div>
+    </>
+  );
+}
+
+function Section({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+      <div className="border-b border-border/60 px-6 py-5">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          {eyebrow}
+        </p>
+        <h2 className="mt-1 font-display text-lg">{title}</h2>
+        {description && (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      <div className="px-6 py-6">{children}</div>
+    </section>
+  );
+}
+
+function StatusRow({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-foreground">{label}</span>
+      <StatusPill status={ok ? "enabled" : "pending"} />
+    </div>
+  );
+}
+
+function FeatureRow({
+  title,
+  description,
+  flag,
+  initial,
+}: {
+  title: string;
+  description: string;
+  flag: "oneClickPayEnabled" | "walletEnabled" | "abandonedRecoveryEnabled";
+  initial: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-6 py-5 first:pt-0 last:pb-0">
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-base">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <FeatureToggle flag={flag} initial={initial} label={title} />
+    </div>
+  );
+}
