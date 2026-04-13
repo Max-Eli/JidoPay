@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { Parallax } from "@/components/motion/parallax";
 
 export const metadata = {
   title: "Security",
@@ -22,8 +23,37 @@ export default function SecurityPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative py-24 lg:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+      <section className="relative overflow-hidden py-24 lg:py-32">
+        <Parallax
+          offset={120}
+          className="pointer-events-none absolute -right-56 top-10 -z-10"
+        >
+          <div
+            aria-hidden
+            className="h-[600px] w-[600px] rounded-full bg-accent/10 blur-3xl"
+          />
+        </Parallax>
+        <Parallax
+          offset={-90}
+          className="pointer-events-none absolute -left-32 bottom-0 -z-10"
+        >
+          <div
+            aria-hidden
+            className="h-[400px] w-[400px] rounded-full bg-foreground/[0.04] blur-3xl"
+          />
+        </Parallax>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-16 top-24 hidden lg:block"
+        >
+          <div className="relative">
+            <div className="absolute inset-0 rounded-3xl bg-accent/10 blur-2xl" />
+            <div className="relative flex h-28 w-28 items-center justify-center rounded-3xl border border-border/60 bg-card/80 backdrop-blur">
+              <Lock className="h-10 w-10 text-accent" strokeWidth={1.25} />
+            </div>
+          </div>
+        </div>
+        <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
           <div className="max-w-3xl">
             <Reveal>
               <div className="mb-6 flex items-center gap-2">

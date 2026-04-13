@@ -19,6 +19,7 @@ import {
   MousePointerClick,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { Parallax } from "@/components/motion/parallax";
 
 export const metadata = {
   title: "Features",
@@ -30,8 +31,26 @@ export default function FeaturesPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative py-24 lg:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+      <section className="relative overflow-hidden py-24 lg:py-32">
+        <Parallax
+          offset={120}
+          className="pointer-events-none absolute -right-48 top-1/2 -translate-y-1/2 -z-10"
+        >
+          <div
+            aria-hidden
+            className="h-[620px] w-[620px] rounded-full bg-accent/10 blur-3xl"
+          />
+        </Parallax>
+        <Parallax
+          offset={-90}
+          className="pointer-events-none absolute -left-32 -top-20 -z-10"
+        >
+          <div
+            aria-hidden
+            className="h-[360px] w-[360px] rounded-full bg-foreground/[0.04] blur-3xl"
+          />
+        </Parallax>
+        <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
           <div className="max-w-3xl">
             <Reveal>
               <div className="mb-6 flex items-center gap-2">

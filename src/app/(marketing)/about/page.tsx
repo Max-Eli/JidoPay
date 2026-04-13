@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
+import { Parallax } from "@/components/motion/parallax";
 
 export const metadata = {
   title: "About",
@@ -12,8 +13,32 @@ export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative py-24 lg:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+      <section className="relative overflow-hidden py-24 lg:py-32">
+        <Parallax
+          offset={110}
+          className="pointer-events-none absolute -right-40 top-0 -z-10"
+        >
+          <div
+            aria-hidden
+            className="h-[560px] w-[560px] rounded-full bg-accent/10 blur-3xl"
+          />
+        </Parallax>
+        <Parallax
+          offset={-80}
+          className="pointer-events-none absolute -left-24 bottom-0 -z-10"
+        >
+          <div
+            aria-hidden
+            className="h-[380px] w-[380px] rounded-full bg-foreground/[0.04] blur-3xl"
+          />
+        </Parallax>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-10 top-24 hidden select-none font-display text-[180px] leading-none text-accent/10 lg:block"
+        >
+          &ldquo;
+        </div>
+        <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
           <div className="max-w-3xl">
             <Reveal>
               <div className="mb-6 flex items-center gap-2">

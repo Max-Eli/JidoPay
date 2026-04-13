@@ -67,10 +67,10 @@ export default function TermsPage() {
         <section>
           <h2 className="font-display text-2xl mb-4">5. Fees</h2>
           <p>
-            JidoPay charges a platform fee of 0.5% on each successful transaction.
-            This is in addition to standard processing fees charged by Stripe
-            (typically 2.9% + $0.30 per card transaction). Fees are deducted
-            automatically from each transaction before payout.
+            JidoPay charges a flat fee of 3.5% + $0.30 on each successful
+            transaction. There are no monthly fees, setup fees, or hidden
+            charges. Fees are deducted automatically from each transaction
+            before payout.
           </p>
         </section>
 

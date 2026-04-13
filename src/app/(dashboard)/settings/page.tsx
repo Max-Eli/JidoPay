@@ -98,16 +98,15 @@ export default async function SettingsPage() {
           </div>
         </Section>
 
-        <Section eyebrow="Pricing" title="Platform fee">
+        <Section eyebrow="Pricing" title="Transaction fee">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            JidoPay charges a{" "}
-            <span className="font-display text-foreground">0.5%</span> platform
-            fee on every successful transaction. Standard processing fees from
-            our payments partner apply separately (typically 2.9% + $0.30 per
-            card transaction).
+            JidoPay charges a flat{" "}
+            <span className="font-display text-foreground">3.5% + $0.30</span>{" "}
+            on every successful transaction. No monthly fees, no setup costs,
+            no hidden charges.
           </p>
           <p className="mt-4 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            Example: on a $100 payment, you receive ~$96.70 after all fees
+            Example: on a $100 payment, you receive $96.20
           </p>
         </Section>
       </div>

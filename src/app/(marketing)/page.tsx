@@ -13,6 +13,9 @@ import {
   ShoppingCart,
   Wallet,
   MousePointerClick,
+  MessageCircle,
+  TrendingUp,
+  Send,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { Parallax } from "@/components/motion/parallax";
@@ -102,11 +105,9 @@ export default function HomePage() {
       <section className="border-y border-border/60 bg-muted/30">
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-border/60 px-6 md:grid-cols-4 lg:px-10">
           <Reveal direction="up" delay={0} className="px-6 py-10 first:pl-0 md:px-10">
-            <div className="font-display text-4xl md:text-5xl">
-              <Counter value={0.5} decimals={1} suffix="%" />
-            </div>
+            <div className="font-display text-4xl md:text-5xl">$0</div>
             <div className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">
-              Platform fee
+              Monthly fee
             </div>
           </Reveal>
           <Reveal direction="up" delay={0.1} className="px-6 py-10 md:px-10">
@@ -288,6 +289,334 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ─── Abandoned cart recovery ───────────────────────────────── */}
+      <section className="border-t border-border/60 bg-muted/30 py-32 lg:py-40">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
+            {/* Mock — left */}
+            <Reveal direction="right" delay={0.15} className="order-2 lg:order-1">
+              <div className="relative mx-auto w-full max-w-sm">
+                {/* Phone frame */}
+                <div className="relative rounded-[2.5rem] border border-border/60 bg-card p-3 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.2)]">
+                  <div className="rounded-[2rem] border border-border/40 bg-background p-6">
+                    {/* Phone header */}
+                    <div className="flex items-center justify-between pb-4">
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        9:41
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="h-1 w-1 rounded-full bg-muted-foreground" />
+                        <div className="h-1 w-1 rounded-full bg-muted-foreground" />
+                        <div className="h-1 w-1 rounded-full bg-muted-foreground" />
+                      </div>
+                    </div>
+
+                    {/* Contact */}
+                    <div className="mb-5 border-b border-border/40 pb-4 text-center">
+                      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+                        <MessageCircle className="h-4 w-4 text-accent" />
+                      </div>
+                      <div className="font-display text-sm">Your Store</div>
+                      <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                        +1 (555) 012-3456
+                      </div>
+                    </div>
+
+                    {/* SMS bubble */}
+                    <div className="space-y-3">
+                      <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-xs leading-relaxed">
+                        Hi Sarah — we saved the cart you started earlier today.
+                        Your items are still waiting. Tap to finish in one click:
+                        <br />
+                        <span className="mt-1 block text-accent underline">
+                          jidopay.com/r/4f2a
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Delivered · just now
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating stat badge */}
+                <div className="absolute -right-4 -top-4 rounded-2xl border border-border bg-background px-4 py-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.15)]">
+                  <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                    Recovered
+                  </div>
+                  <div className="mt-1 font-display text-xl">+$4,280</div>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Copy — right */}
+            <div className="order-1 lg:order-2">
+              <Reveal direction="left">
+                <div className="mb-6 flex items-center gap-2">
+                  <span className="h-px w-8 bg-foreground/40" />
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Recovery
+                  </span>
+                </div>
+              </Reveal>
+              <Reveal direction="left" delay={0.1}>
+                <h2 className="font-display text-display-lg">
+                  Every lost
+                  <br />
+                  checkout.
+                  <br />
+                  <em className="text-accent">Recovered</em>.
+                </h2>
+              </Reveal>
+              <Reveal direction="left" delay={0.2}>
+                <p className="mt-8 max-w-md text-muted-foreground">
+                  When a customer abandons a cart, JidoPay captures it
+                  automatically and sends a considered SMS reminder that brings
+                  them back — with a one-tap link to finish what they started.
+                </p>
+              </Reveal>
+              <ul className="mt-8 space-y-3">
+                {RECOVERY_CAPABILITIES.map((item, idx) => (
+                  <Reveal key={item} delay={0.3 + idx * 0.08} direction="left" as="li">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/10">
+                        <Check className="h-3 w-3 text-accent" />
+                      </div>
+                      {item}
+                    </div>
+                  </Reveal>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Customer wallets ──────────────────────────────────────── */}
+      <section className="py-32 lg:py-40">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
+            {/* Copy — left */}
+            <div>
+              <Reveal direction="right">
+                <div className="mb-6 flex items-center gap-2">
+                  <span className="h-px w-8 bg-foreground/40" />
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Wallets & one-click pay
+                  </span>
+                </div>
+              </Reveal>
+              <Reveal direction="right" delay={0.1}>
+                <h2 className="font-display text-display-lg">
+                  Loyalty, stored
+                  <br />
+                  <em className="text-accent">beautifully</em>.
+                </h2>
+              </Reveal>
+              <Reveal direction="right" delay={0.2}>
+                <p className="mt-8 max-w-md text-muted-foreground">
+                  Offer your best customers a branded stored balance for store
+                  credit, refunds, and loyalty rewards. Returning customers
+                  check out in a single tap — higher conversion, less friction.
+                </p>
+              </Reveal>
+              <ul className="mt-8 space-y-3">
+                {WALLET_CAPABILITIES.map((item, idx) => (
+                  <Reveal key={item} delay={0.3 + idx * 0.08} direction="right" as="li">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/10">
+                        <Check className="h-3 w-3 text-accent" />
+                      </div>
+                      {item}
+                    </div>
+                  </Reveal>
+                ))}
+              </ul>
+            </div>
+
+            {/* Mock — right */}
+            <Reveal direction="left" delay={0.15}>
+              <div className="relative">
+                {/* Wallet card */}
+                <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-8 shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_24px_80px_-20px_rgba(0,0,0,0.15)] transition-transform hover:-translate-y-1">
+                  <div className="mb-8 flex items-start justify-between">
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Customer wallet
+                      </div>
+                      <div className="mt-1 font-display text-lg">Sarah Chen</div>
+                      <div className="text-xs text-muted-foreground">
+                        sarah@example.com
+                      </div>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+                      <Wallet className="h-4 w-4 text-accent" />
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Balance
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="font-display text-5xl">$128.40</span>
+                      <span className="text-xs text-muted-foreground">USD</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 border-t border-border/60 pt-5">
+                    {[
+                      { type: "Top-up", amount: "+$50.00", color: "text-emerald-500" },
+                      { type: "Payment", amount: "−$12.00", color: "text-foreground" },
+                      { type: "Refund credit", amount: "+$25.00", color: "text-emerald-500" },
+                    ].map((row) => (
+                      <div
+                        key={row.type}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="text-muted-foreground">{row.type}</span>
+                        <span className={`font-mono ${row.color}`}>
+                          {row.amount}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Floating one-click badge */}
+                <div className="absolute -left-4 -bottom-4 flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.15)]">
+                  <MousePointerClick className="h-3.5 w-3.5 text-accent" />
+                  <span className="font-mono text-[10px] uppercase tracking-wider">
+                    One-click pay
+                  </span>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Campaigns ─────────────────────────────────────────────── */}
+      <section className="border-y border-border/60 bg-muted/30 py-32 lg:py-40">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
+            {/* Mock — left */}
+            <Reveal direction="right" delay={0.15} className="order-2 lg:order-1">
+              <div className="relative">
+                {/* Campaign stats card */}
+                <div className="rounded-2xl border border-border/60 bg-card p-8 shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_24px_80px_-20px_rgba(0,0,0,0.15)] transition-transform hover:-translate-y-1">
+                  {/* Header */}
+                  <div className="mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Campaign active
+                      </span>
+                    </div>
+                    <Megaphone className="h-4 w-4 text-accent" />
+                  </div>
+
+                  <div>
+                    <div className="font-display text-xl">
+                      Winter reactivation
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      SMS · Inactive customers · 30 days
+                    </div>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="mt-8 grid grid-cols-3 gap-4">
+                    {[
+                      { label: "Sent", value: "247" },
+                      { label: "Opened", value: "182" },
+                      { label: "Recovered", value: "$4.2k" },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="rounded-xl border border-border/60 bg-background p-4"
+                      >
+                        <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                          {stat.label}
+                        </div>
+                        <div className="mt-1 font-display text-xl">
+                          {stat.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mt-6 space-y-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Delivery rate</span>
+                      <span className="font-mono">96.4%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: "96.4%" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating ROI badge */}
+                <div className="absolute -right-4 -top-4 flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.15)]">
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                  <div>
+                    <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                      ROI
+                    </div>
+                    <div className="font-display text-base leading-none">
+                      17.3×
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Copy — right */}
+            <div className="order-1 lg:order-2">
+              <Reveal direction="left">
+                <div className="mb-6 flex items-center gap-2">
+                  <span className="h-px w-8 bg-foreground/40" />
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Campaigns
+                  </span>
+                </div>
+              </Reveal>
+              <Reveal direction="left" delay={0.1}>
+                <h2 className="font-display text-display-lg">
+                  Bring them
+                  <br />
+                  <em className="text-accent">back</em>.
+                </h2>
+              </Reveal>
+              <Reveal direction="left" delay={0.2}>
+                <p className="mt-8 max-w-md text-muted-foreground">
+                  Re-engage inactive customers, reward repeat buyers, or recover
+                  abandoned checkouts — all with one-tap SMS and email blasts.
+                  Beautifully composed, precisely targeted, measured in real time.
+                </p>
+              </Reveal>
+              <ul className="mt-8 space-y-3">
+                {CAMPAIGN_CAPABILITIES.map((item, idx) => (
+                  <Reveal key={item} delay={0.3 + idx * 0.08} direction="left" as="li">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/10">
+                        <Send className="h-2.5 w-2.5 text-accent" />
+                      </div>
+                      {item}
+                    </div>
+                  </Reveal>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Final CTA ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden border-t border-border/60 bg-foreground text-background">
         <div className="mx-auto max-w-7xl px-6 py-32 text-center lg:px-10 lg:py-40">
@@ -404,4 +733,25 @@ const AI_CAPABILITIES = [
   "Draft follow-up emails for overdue invoices",
   "Write professional customer messages",
   "Suggest pricing strategies based on your data",
+];
+
+const RECOVERY_CAPABILITIES = [
+  "Every abandoned checkout captured automatically",
+  "Personalized SMS with the customer's name",
+  "One-tap recovery link, no retyping",
+  "Real-time status from pending to recovered",
+];
+
+const WALLET_CAPABILITIES = [
+  "Optional, opt-in per merchant",
+  "Perfect for store credit and refunds",
+  "Full audit trail for every transaction",
+  "Returning customers check out in one tap",
+];
+
+const CAMPAIGN_CAPABILITIES = [
+  "Target inactive, repeat, or abandoned audiences",
+  "Personalization tokens for name and business",
+  "Live delivery and recovery stats",
+  "Send by SMS, email, or both",
 ];
