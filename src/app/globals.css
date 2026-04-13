@@ -97,6 +97,21 @@
     letter-spacing: -0.02em;
   }
 
+  /* Inside the dashboard, font-display resolves to Inter with tight tracking
+     and a heavier weight. Same API as marketing (.font-display on every
+     heading) but a modern, geometric sans that's easier to read at small
+     sizes and inside dense product UI. */
+  [data-app-ui] .font-display {
+    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    font-weight: 600;
+    font-feature-settings: "ss01", "cv11", "calt", "ss03";
+    letter-spacing: -0.022em;
+  }
+  [data-app-ui] .font-display em {
+    font-style: normal;
+  }
+
   .font-sans {
     font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
   }

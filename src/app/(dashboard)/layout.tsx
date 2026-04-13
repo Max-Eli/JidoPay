@@ -32,7 +32,10 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      data-app-ui
+      className="min-h-screen bg-background text-foreground"
+    >
       <Sidebar />
       <main className="pl-64">{children}</main>
       <AiWidget />
