@@ -22,20 +22,20 @@ export default function PricingPage() {
       <section className="relative overflow-hidden py-24 lg:py-32">
         <Parallax
           offset={120}
-          className="pointer-events-none absolute -left-48 top-10 -z-10"
+          className="pointer-events-none absolute -left-48 top-10"
         >
           <div
             aria-hidden
-            className="h-[520px] w-[520px] rounded-full bg-accent/10 blur-3xl"
+            className="h-[520px] w-[520px] rounded-full bg-accent/20 blur-3xl"
           />
         </Parallax>
         <Parallax
           offset={-100}
-          className="pointer-events-none absolute -right-40 bottom-0 -z-10"
+          className="pointer-events-none absolute -right-40 bottom-0"
         >
           <div
             aria-hidden
-            className="h-[420px] w-[420px] rounded-full bg-foreground/[0.04] blur-3xl"
+            className="h-[420px] w-[420px] rounded-full bg-foreground/[0.05] blur-3xl"
           />
         </Parallax>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />

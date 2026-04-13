@@ -26,20 +26,20 @@ export default function SecurityPage() {
       <section className="relative overflow-hidden py-24 lg:py-32">
         <Parallax
           offset={120}
-          className="pointer-events-none absolute -right-56 top-10 -z-10"
+          className="pointer-events-none absolute -right-56 top-10"
         >
           <div
             aria-hidden
-            className="h-[600px] w-[600px] rounded-full bg-accent/10 blur-3xl"
+            className="h-[600px] w-[600px] rounded-full bg-accent/20 blur-3xl"
           />
         </Parallax>
         <Parallax
           offset={-90}
-          className="pointer-events-none absolute -left-32 bottom-0 -z-10"
+          className="pointer-events-none absolute -left-32 bottom-0"
         >
           <div
             aria-hidden
-            className="h-[400px] w-[400px] rounded-full bg-foreground/[0.04] blur-3xl"
+            className="h-[400px] w-[400px] rounded-full bg-foreground/[0.05] blur-3xl"
           />
         </Parallax>
         <div

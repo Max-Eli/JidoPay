@@ -13,20 +13,20 @@ export default function ContactPage() {
       <section className="relative overflow-hidden py-24 lg:py-32">
         <Parallax
           offset={110}
-          className="pointer-events-none absolute -right-48 top-0 -z-10"
+          className="pointer-events-none absolute -right-48 top-0"
         >
           <div
             aria-hidden
-            className="h-[560px] w-[560px] rounded-full bg-accent/10 blur-3xl"
+            className="h-[560px] w-[560px] rounded-full bg-accent/20 blur-3xl"
           />
         </Parallax>
         <Parallax
           offset={-90}
-          className="pointer-events-none absolute -left-32 bottom-0 -z-10"
+          className="pointer-events-none absolute -left-32 bottom-0"
         >
           <div
             aria-hidden
-            className="h-[380px] w-[380px] rounded-full bg-foreground/[0.04] blur-3xl"
+            className="h-[380px] w-[380px] rounded-full bg-foreground/[0.05] blur-3xl"
           />
         </Parallax>
         <div

@@ -34,20 +34,20 @@ export default function FeaturesPage() {
       <section className="relative overflow-hidden py-24 lg:py-32">
         <Parallax
           offset={120}
-          className="pointer-events-none absolute -right-48 top-1/2 -translate-y-1/2 -z-10"
+          className="pointer-events-none absolute -right-48 top-1/2 -translate-y-1/2"
         >
           <div
             aria-hidden
-            className="h-[620px] w-[620px] rounded-full bg-accent/10 blur-3xl"
+            className="h-[620px] w-[620px] rounded-full bg-accent/20 blur-3xl"
           />
         </Parallax>
         <Parallax
           offset={-90}
-          className="pointer-events-none absolute -left-32 -top-20 -z-10"
+          className="pointer-events-none absolute -left-32 -top-20"
         >
           <div
             aria-hidden
-            className="h-[360px] w-[360px] rounded-full bg-foreground/[0.04] blur-3xl"
+            className="h-[360px] w-[360px] rounded-full bg-foreground/[0.05] blur-3xl"
           />
         </Parallax>
         <div className="relative mx-auto max-w-7xl px-6 lg:px-10">
