@@ -1,16 +1,26 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  throw new Error("ANTHROPIC_API_KEY is not set");
+let cached: Anthropic | null = null;
+
+function getAnthropic(): Anthropic {
+  if (cached) return cached;
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    throw new Error("ANTHROPIC_API_KEY is not set");
+  }
+  cached = new Anthropic({ apiKey: key });
+  return cached;
 }
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+export const anthropic = new Proxy({} as Anthropic, {
+  get(_target, prop) {
+    return Reflect.get(getAnthropic(), prop);
+  },
 });
 
 export type MerchantContext = {
   businessName: string | null;
-  totalRevenue: number; // cents
+  totalRevenue: number;
   paymentCount: number;
   invoiceCount: number;
   customerCount: number;
