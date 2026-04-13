@@ -33,6 +33,13 @@ export async function getOrCreateConnectedAccount(
       card_payments: { requested: true },
       transfers: { requested: true },
     },
+    // Show "JIDOPAY" on the merchant's bank statement when payouts arrive
+    // instead of Stripe's default "STRIPE TRANSFER" descriptor.
+    settings: {
+      payouts: {
+        statement_descriptor: "JIDOPAY",
+      },
+    },
     metadata: { merchantId },
   });
   return account;
@@ -67,6 +74,31 @@ export async function createOnboardingAccountSession(
       account_onboarding: {
         enabled: true,
         features: {
+          external_account_collection: true,
+        },
+      },
+    },
+  });
+  return session.client_secret;
+}
+
+/**
+ * Create an Account Session for the embedded payouts component. Grants
+ * the merchant in-dashboard access to their balance, payout history,
+ * schedule settings, and instant payouts (1.5% Stripe fee applies).
+ */
+export async function createPayoutsAccountSession(
+  accountId: string
+): Promise<string> {
+  const session = await getStripe().accountSessions.create({
+    account: accountId,
+    components: {
+      payouts: {
+        enabled: true,
+        features: {
+          instant_payouts: true,
+          standard_payouts: true,
+          edit_payout_schedule: true,
           external_account_collection: true,
         },
       },

@@ -13,6 +13,7 @@ import {
   Megaphone,
   Wallet,
   ShoppingCart,
+  Landmark,
 } from "lucide-react";
 import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const NAV_SECTIONS = [
       { href: "/invoices", label: "Invoices", icon: FileText },
       { href: "/payment-links", label: "Payment Links", icon: Link2 },
       { href: "/customers", label: "Customers", icon: Users },
+      { href: "/payouts", label: "Payouts", icon: Landmark },
     ],
   },
   {
