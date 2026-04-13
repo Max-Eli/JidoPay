@@ -38,7 +38,7 @@ export async function getOrCreateConnectedAccount(
   return account;
 }
 
-/** Generate the Stripe Connect onboarding link */
+/** Generate the Stripe Connect onboarding link (legacy hosted flow). */
 export async function createAccountLink(
   accountId: string,
   returnUrl: string,
@@ -51,6 +51,28 @@ export async function createAccountLink(
     type: "account_onboarding",
   });
   return link.url;
+}
+
+/**
+ * Create an Account Session client secret for the embedded onboarding
+ * component. Enables the `account_onboarding` component only — we don't
+ * need the full Express dashboard embedded.
+ */
+export async function createOnboardingAccountSession(
+  accountId: string
+): Promise<string> {
+  const session = await getStripe().accountSessions.create({
+    account: accountId,
+    components: {
+      account_onboarding: {
+        enabled: true,
+        features: {
+          external_account_collection: true,
+        },
+      },
+    },
+  });
+  return session.client_secret;
 }
 
 /** Verify a Stripe webhook signature — always use this, never skip */

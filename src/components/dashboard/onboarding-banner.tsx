@@ -1,28 +1,7 @@
-"use client";
-
-import { useState } from "react";
-import { ArrowUpRight, Loader2, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 
 export function OnboardingBanner() {
-  const [loading, setLoading] = useState(false);
-
-  async function startOnboarding() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/stripe/connect", { method: "POST" });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else if (data.alreadyConnected) {
-        window.location.reload();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-8">
       <div
@@ -42,29 +21,18 @@ export function OnboardingBanner() {
               Connect your bank to start accepting payments
             </h3>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Securely verify your business with our payment infrastructure
-              partner. The process takes about five minutes and handles all
-              compliance automatically.
+              Verify your business and link a payout account. The process is
+              encrypted end-to-end and takes about five minutes.
             </p>
           </div>
         </div>
-        <button
-          onClick={startOnboarding}
-          disabled={loading}
-          className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-all hover:scale-[1.02] hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+        <Link
+          href="/onboarding"
+          className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-all hover:scale-[1.02] hover:bg-foreground/90"
         >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Redirecting
-            </>
-          ) : (
-            <>
-              Connect bank
-              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </>
-          )}
-        </button>
+          Finish setup
+          <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        </Link>
       </div>
     </div>
   );
