@@ -39,7 +39,13 @@ export function dollarsToCents(dollars: number): number {
   return Math.round(dollars * 100);
 }
 
-/** Calculate 0.5% platform fee in cents, minimum 1 cent. */
+/**
+ * Platform application fee in cents. Minimum 1 cent.
+ *
+ * Direct charges on the connected account already subtract Stripe's
+ * ~2.9% + $0.30 processing fee. Charging an additional 0.6% brings the
+ * merchant's total cost to the advertised 3.5% + $0.30.
+ */
 export function calculateApplicationFee(amountInCents: number): number {
-  return Math.max(1, Math.round(amountInCents * 0.005));
+  return Math.max(1, Math.round(amountInCents * 0.006));
 }

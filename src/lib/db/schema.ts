@@ -497,6 +497,32 @@ export const paymentLinkRelations = relations(paymentLinks, ({ one }) => ({
   }),
 }));
 
+// ─── Marketing Leads (TCR-compliant SMS opt-in) ──────────────────────────────
+// Captured from the marketing site popup. Every row represents an explicit
+// opt-in to receive marketing text messages from JidoPay and stores the
+// exact consent language, timestamp, IP, and user agent for audit/TCR.
+
+export const marketingLeads = pgTable(
+  "marketing_leads",
+  {
+    id: text("id").primaryKey(),
+    firstName: varchar("first_name", { length: 80 }).notNull(),
+    phone: varchar("phone", { length: 24 }).notNull(), // E.164 format
+    source: varchar("source", { length: 64 }).notNull().default("popup"),
+    consentText: text("consent_text").notNull(),
+    consentAt: timestamp("consent_at").notNull().defaultNow(),
+    ipAddress: varchar("ip_address", { length: 64 }),
+    userAgent: text("user_agent"),
+    welcomeSmsSent: boolean("welcome_sms_sent").notNull().default(false),
+    unsubscribedAt: timestamp("unsubscribed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("marketing_leads_phone_unique").on(t.phone),
+    index("marketing_leads_created_at_idx").on(t.createdAt),
+  ]
+);
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Merchant = typeof merchants.$inferSelect;
@@ -522,3 +548,5 @@ export type AbandonedCheckout = typeof abandonedCheckouts.$inferSelect;
 export type NewAbandonedCheckout = typeof abandonedCheckouts.$inferInsert;
 export type SavedPaymentMethod = typeof savedPaymentMethods.$inferSelect;
 export type NewSavedPaymentMethod = typeof savedPaymentMethods.$inferInsert;
+export type MarketingLead = typeof marketingLeads.$inferSelect;
+export type NewMarketingLead = typeof marketingLeads.$inferInsert;

@@ -4,6 +4,7 @@ import { Redis } from "@upstash/redis";
 let redis: Redis | null = null;
 let ratelimit: Ratelimit | null = null;
 let aiRatelimit: Ratelimit | null = null;
+let publicRatelimit: Ratelimit | null = null;
 
 function getRedis(): Redis {
   if (!redis) {
@@ -29,6 +30,19 @@ export function getRatelimit(): Ratelimit {
     });
   }
   return ratelimit;
+}
+
+/** Public (unauthenticated) endpoint rate limit: 5 requests per minute per IP */
+export function getPublicRatelimit(): Ratelimit {
+  if (!publicRatelimit) {
+    publicRatelimit = new Ratelimit({
+      redis: getRedis(),
+      limiter: Ratelimit.slidingWindow(5, "1 m"),
+      analytics: true,
+      prefix: "jidopay:public",
+    });
+  }
+  return publicRatelimit;
 }
 
 /** AI endpoint rate limit: 20 requests per minute per user */
