@@ -127,7 +127,7 @@ export function ConnectOnboarding() {
 
   return (
     <ConnectComponentsProvider connectInstance={instance}>
-      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      <div className="rounded-2xl bg-card p-6 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.35)] ring-1 ring-border/60 sm:p-8">
         <ConnectAccountOnboarding
           onExit={() => {
             router.push("/onboarding/return");
