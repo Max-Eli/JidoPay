@@ -1,13 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { db, merchants } from "@/lib/db";
+import { db, merchants, auditLogs } from "@/lib/db";
 import {
   stripe,
   getOrCreateConnectedAccount,
   createOnboardingAccountSession,
 } from "@/lib/stripe";
 import { eq } from "drizzle-orm";
+import { generateId } from "@/lib/utils";
 
 /**
  * Returns the data the embedded Connect onboarding component needs:
@@ -45,6 +46,7 @@ export async function POST() {
       try {
         const account = await stripe.accounts.retrieve(accountId);
         if (account.charges_enabled && account.payouts_enabled) {
+          const wasAlreadyComplete = merchant.stripeOnboardingComplete;
           await db
             .update(merchants)
             .set({
@@ -54,6 +56,17 @@ export async function POST() {
               updatedAt: new Date(),
             })
             .where(eq(merchants.id, userId));
+          if (!wasAlreadyComplete) {
+            await db.insert(auditLogs).values({
+              id: generateId("aud"),
+              merchantId: userId,
+              action: "account_connected",
+              resourceId: accountId,
+              resourceType: "stripe_account",
+              metadata: JSON.stringify({ source: "onboarding_session" }),
+              ipAddress: null,
+            });
+          }
           return NextResponse.json({ alreadyConnected: true });
         }
       } catch (err) {
@@ -64,6 +77,7 @@ export async function POST() {
           console.warn(
             `[connect] stale stripeAccountId=${accountId} for merchant=${userId}, clearing and recreating`
           );
+          const staleAccountId = accountId;
           accountId = null;
           await db
             .update(merchants)
@@ -75,6 +89,15 @@ export async function POST() {
               updatedAt: new Date(),
             })
             .where(eq(merchants.id, userId));
+          await db.insert(auditLogs).values({
+            id: generateId("aud"),
+            merchantId: userId,
+            action: "account_disconnected",
+            resourceId: staleAccountId,
+            resourceType: "stripe_account",
+            metadata: JSON.stringify({ reason: "resource_missing" }),
+            ipAddress: null,
+          });
         } else {
           throw err;
         }
@@ -89,6 +112,16 @@ export async function POST() {
         .update(merchants)
         .set({ stripeAccountId: accountId, updatedAt: new Date() })
         .where(eq(merchants.id, userId));
+
+      await db.insert(auditLogs).values({
+        id: generateId("aud"),
+        merchantId: userId,
+        action: "account_connected",
+        resourceId: accountId,
+        resourceType: "stripe_account",
+        metadata: JSON.stringify({ source: "fresh_account" }),
+        ipAddress: null,
+      });
     }
 
     const clientSecret = await createOnboardingAccountSession(accountId);

@@ -9,8 +9,11 @@ import {
   webhookEvents,
   paymentLinks,
   abandonedCheckouts,
+  auditLogs,
+  customers,
+  savedPaymentMethods,
 } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { generateId, calculateApplicationFee } from "@/lib/utils";
 import type Stripe from "stripe";
 
@@ -90,7 +93,8 @@ export async function POST(req: NextRequest) {
       }
       case "checkout.session.completed": {
         await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session
+          event.data.object as Stripe.Checkout.Session,
+          connectedAccountId
         );
         break;
       }
@@ -172,6 +176,19 @@ async function handlePaymentSucceeded(
       .update(invoices)
       .set({ status: "paid", paidAt: new Date(), updatedAt: new Date() })
       .where(eq(invoices.id, pi.metadata.invoiceId));
+
+    await db.insert(auditLogs).values({
+      id: generateId("aud"),
+      merchantId,
+      action: "invoice_paid",
+      resourceId: pi.metadata.invoiceId,
+      resourceType: "invoice",
+      metadata: JSON.stringify({
+        amount: pi.amount,
+        stripePaymentIntentId: pi.id,
+      }),
+      ipAddress: null,
+    });
   }
 
   // Update payment link stats
@@ -235,13 +252,110 @@ async function handleCheckoutExpired(
     .onConflictDoNothing();
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  connectedAccountId: string | null
+) {
   // If this session previously existed as an abandoned checkout, mark it recovered
   if (!session.id) return;
   await db
     .update(abandonedCheckouts)
     .set({ status: "recovered", recoveredAt: new Date() })
     .where(eq(abandonedCheckouts.stripeSessionId, session.id));
+
+  // One-click pay: if the session saved a payment method for future off-session
+  // use, mirror it into saved_payment_methods so returning customers can skip
+  // re-entering card details on this merchant's future payment links.
+  if (!connectedAccountId) return;
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+  if (!paymentIntentId) return;
+
+  const stripeCustomerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id ?? null;
+  const email = session.customer_details?.email ?? null;
+  if (!stripeCustomerId || !email) return;
+
+  // Resolve the merchant from the connected account
+  const [merchant] = await db
+    .select()
+    .from(merchants)
+    .where(eq(merchants.stripeAccountId, connectedAccountId));
+  if (!merchant) return;
+
+  // Retrieve the PI on the connected account to see if a reusable payment
+  // method was attached (setup_future_usage = off_session).
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.retrieve(
+      paymentIntentId,
+      { expand: ["payment_method"] },
+      { stripeAccount: connectedAccountId }
+    );
+  } catch {
+    return;
+  }
+
+  if (pi.setup_future_usage !== "off_session") return;
+
+  const pm = pi.payment_method as Stripe.PaymentMethod | null;
+  if (!pm || pm.type !== "card" || !pm.card) return;
+
+  // Find or create a JidoPay customer row by (merchantId, email).
+  // The payments-succeeded handler doesn't create customer rows directly,
+  // so we do it here once we have a confirmed email + Stripe customer id.
+  const [existingCustomer] = await db
+    .select()
+    .from(customers)
+    .where(
+      and(
+        eq(customers.merchantId, merchant.id),
+        eq(customers.email, email)
+      )
+    );
+
+  let customerId: string;
+  if (existingCustomer) {
+    customerId = existingCustomer.id;
+    if (!existingCustomer.stripeCustomerId) {
+      await db
+        .update(customers)
+        .set({ stripeCustomerId, updatedAt: new Date() })
+        .where(eq(customers.id, customerId));
+    }
+  } else {
+    customerId = generateId("cus");
+    await db.insert(customers).values({
+      id: customerId,
+      merchantId: merchant.id,
+      name: session.customer_details?.name ?? email,
+      email,
+      phone: session.customer_details?.phone ?? null,
+      stripeCustomerId,
+    });
+  }
+
+  // Upsert the saved payment method. Unique key is stripePaymentMethodId so
+  // retries of the same webhook don't double-insert.
+  await db
+    .insert(savedPaymentMethods)
+    .values({
+      id: generateId("spm"),
+      merchantId: merchant.id,
+      customerId,
+      stripePaymentMethodId: pm.id,
+      brand: pm.card.brand,
+      last4: pm.card.last4,
+      expMonth: pm.card.exp_month,
+      expYear: pm.card.exp_year,
+      isDefault: true,
+    })
+    .onConflictDoNothing();
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {
