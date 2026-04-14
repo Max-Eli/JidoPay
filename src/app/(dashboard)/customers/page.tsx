@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { db, customers } from "@/lib/db";
 import { eq, desc, count } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Users } from "lucide-react";
+import { Users, Plus } from "lucide-react";
+import Link from "next/link";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Pagination, parsePageParam } from "@/components/dashboard/pagination";
 
@@ -44,6 +45,15 @@ export default async function CustomersPage({
       <Topbar
         title="Customers"
         description="Everyone who has paid you through JidoPay, ranked by lifetime value."
+        actions={
+          <Link
+            href="/customers/new"
+            className="group inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-xs font-medium text-background transition-all hover:scale-[1.02] hover:bg-foreground/90"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New customer
+          </Link>
+        }
       />
 
       <div className="mx-auto max-w-7xl px-8 py-10">
@@ -69,8 +79,16 @@ export default async function CustomersPage({
               </div>
               <p className="font-display text-lg">No customers yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Customers appear automatically once they pay you.
+                Customers appear automatically once they pay you — or add
+                them manually.
               </p>
+              <Link
+                href="/customers/new"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-xs font-medium text-background transition-all hover:scale-[1.02] hover:bg-foreground/90"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add a customer
+              </Link>
             </div>
           ) : (
             <>

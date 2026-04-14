@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, wallets, customers, merchants } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Wallet as WalletIcon } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
@@ -20,12 +20,10 @@ export default async function WalletPage() {
     .where(eq(merchants.id, userId));
   if (!merchant) redirect("/sign-in");
 
-  const customerList = await db
-    .select({ id: customers.id, name: customers.name, email: customers.email })
+  const [customerCount] = await db
+    .select({ count: count() })
     .from(customers)
-    .where(eq(customers.merchantId, userId))
-    .orderBy(desc(customers.updatedAt))
-    .limit(200);
+    .where(eq(customers.merchantId, userId));
 
   const walletRows = merchant.walletEnabled
     ? await db
@@ -52,9 +50,7 @@ export default async function WalletPage() {
         title="Customer wallets"
         description="Offer stored value to your customers for faster repeat purchases."
         actions={
-          merchant.walletEnabled ? (
-            <WalletCreditButton customers={customerList} />
-          ) : undefined
+          merchant.walletEnabled ? <WalletCreditButton /> : undefined
         }
       />
 
@@ -87,7 +83,7 @@ export default async function WalletPage() {
               />
               <Stat
                 label="Customers"
-                value={customerList.length.toString()}
+                value={(customerCount?.count ?? 0).toString()}
               />
             </div>
           )}

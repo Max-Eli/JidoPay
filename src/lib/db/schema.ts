@@ -37,6 +37,18 @@ export const paymentLinkStatusEnum = pgEnum("payment_link_status", [
   "expired",
 ]);
 
+export const paymentLinkTypeEnum = pgEnum("payment_link_type", [
+  "one_time",
+  "recurring",
+]);
+
+export const priceIntervalEnum = pgEnum("price_interval", [
+  "day",
+  "week",
+  "month",
+  "year",
+]);
+
 export const auditActionEnum = pgEnum("audit_action", [
   "invoice_created",
   "invoice_sent",
@@ -54,6 +66,7 @@ export const auditActionEnum = pgEnum("audit_action", [
   "abandoned_checkout_reminded",
   "settings_updated",
   "customer_unsubscribed",
+  "customer_created",
 ]);
 
 export const campaignChannelEnum = pgEnum("campaign_channel", ["email", "sms"]);
@@ -260,6 +273,9 @@ export const paymentLinks = pgTable(
     amount: bigint("amount", { mode: "number" }).notNull(), // cents (0 = customer chooses)
     currency: varchar("currency", { length: 3 }).notNull().default("usd"),
     status: paymentLinkStatusEnum("status").notNull().default("active"),
+    type: paymentLinkTypeEnum("type").notNull().default("one_time"),
+    interval: priceIntervalEnum("interval"),
+    intervalCount: integer("interval_count"),
     stripePaymentLinkId: varchar("stripe_payment_link_id", { length: 255 }),
     stripePaymentLinkUrl: text("stripe_payment_link_url"),
     totalCollected: bigint("total_collected", { mode: "number" }).notNull().default(0),

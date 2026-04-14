@@ -7,12 +7,20 @@ import { generateId, calculateApplicationFee } from "@/lib/utils";
 import { stripe } from "@/lib/stripe";
 import { getRatelimit } from "@/lib/ratelimit";
 
-const createPaymentLinkSchema = z.object({
-  name: z.string().min(1).max(255),
-  description: z.string().max(500).optional(),
-  amount: z.number().int().min(50), // cents, minimum 50 cents
-  currency: z.string().length(3).default("usd"),
-});
+const createPaymentLinkSchema = z
+  .object({
+    name: z.string().min(1).max(255),
+    description: z.string().max(500).optional(),
+    amount: z.number().int().min(50), // cents, minimum 50 cents
+    currency: z.string().length(3).default("usd"),
+    type: z.enum(["one_time", "recurring"]).default("one_time"),
+    interval: z.enum(["day", "week", "month", "year"]).optional(),
+    intervalCount: z.number().int().min(1).max(12).optional(),
+  })
+  .refine(
+    (v) => v.type === "one_time" || (v.interval && v.intervalCount),
+    { message: "Recurring links require interval and intervalCount" }
+  );
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -61,6 +69,14 @@ export async function POST(req: NextRequest) {
       currency: data.currency,
       unit_amount: data.amount,
       product_data: { name: data.name },
+      ...(data.type === "recurring"
+        ? {
+            recurring: {
+              interval: data.interval!,
+              interval_count: data.intervalCount!,
+            },
+          }
+        : {}),
     },
     {
       stripeAccount: merchant.stripeAccountId,
@@ -68,24 +84,34 @@ export async function POST(req: NextRequest) {
     }
   );
 
+  // Subscriptions can't use application_fee_amount — they need
+  // application_fee_percent instead. One-time payments use the flat fee.
+  const isRecurring = data.type === "recurring";
+  const oneClickExtras =
+    merchant.oneClickPayEnabled && !isRecurring
+      ? {
+          customer_creation: "always" as const,
+          payment_intent_data: {
+            setup_future_usage: "off_session" as const,
+          },
+        }
+      : {};
+
   const stripePaymentLink = await stripe.paymentLinks.create(
     {
       line_items: [{ price: price.id, quantity: 1 }],
-      application_fee_amount: appFee,
+      ...(isRecurring
+        ? {
+            // For subscriptions Stripe charges a percentage fee per
+            // invoice rather than the flat one-time fee.
+            application_fee_percent: 0.6,
+          }
+        : { application_fee_amount: appFee }),
       metadata: {
         merchantId: userId,
         paymentLinkId: linkId,
       },
-      // One-click pay: create a persistent Customer so returning buyers
-      // can reuse their saved details on the next visit.
-      ...(merchant.oneClickPayEnabled
-        ? {
-            customer_creation: "always" as const,
-            payment_intent_data: {
-              setup_future_usage: "off_session" as const,
-            },
-          }
-        : {}),
+      ...oneClickExtras,
       after_completion: {
         type: "redirect",
         redirect: { url: `${process.env.NEXT_PUBLIC_APP_URL}/pay/success` },
@@ -107,6 +133,9 @@ export async function POST(req: NextRequest) {
       amount: data.amount,
       currency: data.currency,
       status: "active",
+      type: data.type,
+      interval: isRecurring ? data.interval! : null,
+      intervalCount: isRecurring ? data.intervalCount! : null,
       stripePaymentLinkId: stripePaymentLink.id,
       stripePaymentLinkUrl: stripePaymentLink.url,
     })

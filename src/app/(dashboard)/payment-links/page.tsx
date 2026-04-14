@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Link2, ExternalLink } from "lucide-react";
 import { CreatePaymentLinkButton } from "@/components/dashboard/create-payment-link-button";
 import { CopyLinkButton } from "@/components/dashboard/copy-link-button";
+import { EmbedSnippetButton } from "@/components/dashboard/embed-snippet-button";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
 
@@ -95,6 +96,7 @@ export default async function PaymentLinksPage() {
                   {link.stripePaymentLinkUrl && (
                     <div className="flex shrink-0 items-center gap-2">
                       <CopyLinkButton url={link.stripePaymentLinkUrl} />
+                      <EmbedSnippetButton linkId={link.id} />
                       <a
                         href={link.stripePaymentLinkUrl}
                         target="_blank"
