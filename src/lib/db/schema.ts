@@ -122,6 +122,13 @@ export const merchants = pgTable(
     id: text("id").primaryKey(), // clerk user id
     email: varchar("email", { length: 255 }).notNull(),
     businessName: varchar("business_name", { length: 255 }),
+    // Public storefront: when storefrontEnabled is true, we serve a
+    // zero-code catalog page at /shop/<storefrontSlug> that lists every
+    // active payment link for this merchant. Slug is the only truly
+    // user-facing identifier so uniqueness is enforced at the DB level.
+    storefrontSlug: varchar("storefront_slug", { length: 64 }),
+    storefrontTagline: varchar("storefront_tagline", { length: 160 }),
+    storefrontEnabled: boolean("storefront_enabled").notNull().default(false),
     stripeAccountId: varchar("stripe_account_id", { length: 255 }),
     stripeOnboardingComplete: boolean("stripe_onboarding_complete")
       .notNull()
@@ -144,6 +151,7 @@ export const merchants = pgTable(
   (t) => [
     index("merchants_stripe_account_id_idx").on(t.stripeAccountId),
     unique("merchants_stripe_account_id_unique").on(t.stripeAccountId),
+    unique("merchants_storefront_slug_unique").on(t.storefrontSlug),
   ]
 );
 

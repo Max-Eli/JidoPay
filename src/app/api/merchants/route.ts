@@ -1,16 +1,20 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { db, merchants, auditLogs } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { generateId } from "@/lib/utils";
 import { stripe } from "@/lib/stripe";
+import { validateStorefrontSlug } from "@/lib/branded-url";
 
 const updateMerchantSchema = z.object({
   businessName: z.string().max(255).optional(),
   oneClickPayEnabled: z.boolean().optional(),
   walletEnabled: z.boolean().optional(),
   abandonedRecoveryEnabled: z.boolean().optional(),
+  storefrontSlug: z.string().max(64).nullable().optional(),
+  storefrontTagline: z.string().max(160).nullable().optional(),
+  storefrontEnabled: z.boolean().optional(),
 });
 
 /** Called on first visit after sign-up to provision the merchant record */
@@ -86,9 +90,47 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
   }
 
+  // Normalize + validate the storefront slug before touching the DB.
+  // Merchants can clear their slug by passing null or empty string; any
+  // non-empty value has to pass the slug rules and must not collide with
+  // another merchant.
+  const updates: Partial<typeof merchants.$inferInsert> = { ...parsed.data };
+  if (parsed.data.storefrontSlug !== undefined) {
+    const raw = parsed.data.storefrontSlug;
+    if (raw === null || raw.trim() === "") {
+      updates.storefrontSlug = null;
+    } else {
+      const check = validateStorefrontSlug(raw);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.reason }, { status: 422 });
+      }
+      const [clash] = await db
+        .select({ id: merchants.id })
+        .from(merchants)
+        .where(
+          and(
+            eq(merchants.storefrontSlug, check.value),
+            ne(merchants.id, userId)
+          )
+        );
+      if (clash) {
+        return NextResponse.json(
+          { error: "That handle is already taken." },
+          { status: 409 }
+        );
+      }
+      updates.storefrontSlug = check.value;
+    }
+  }
+  if (parsed.data.storefrontTagline !== undefined) {
+    const raw = parsed.data.storefrontTagline;
+    updates.storefrontTagline =
+      raw === null || raw.trim() === "" ? null : raw.trim();
+  }
+
   const [merchant] = await db
     .update(merchants)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...updates, updatedAt: new Date() })
     .where(eq(merchants.id, userId))
     .returning();
 

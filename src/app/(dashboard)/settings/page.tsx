@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db, merchants } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { SettingsForm } from "@/components/dashboard/settings-form";
+import { StorefrontForm } from "@/components/dashboard/storefront-form";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { FeatureToggle } from "@/components/dashboard/feature-toggle";
@@ -36,6 +37,18 @@ export default async function SettingsPage() {
           <SettingsForm
             merchantId={merchant.id}
             businessName={merchant.businessName ?? ""}
+          />
+        </Section>
+
+        <Section
+          eyebrow="Storefront"
+          title="Your public shop page"
+          description="A zero-code catalog page at jidopay.com/shop/your-handle that lists every active payment link. Share the link on social, in your bio, or in texts — no website needed."
+        >
+          <StorefrontForm
+            initialSlug={merchant.storefrontSlug ?? ""}
+            initialTagline={merchant.storefrontTagline ?? ""}
+            initialEnabled={merchant.storefrontEnabled}
           />
         </Section>
 
