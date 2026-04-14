@@ -54,7 +54,7 @@ export default async function WalletPage() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 px-8 py-10">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <section className="overflow-hidden rounded-2xl border border-border/60 bg-card">
           <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
             <div>

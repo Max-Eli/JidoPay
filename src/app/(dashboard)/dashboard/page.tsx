@@ -120,7 +120,7 @@ export default async function DashboardPage() {
         description="A snapshot of your revenue, payments, and customer activity."
       />
 
-      <div className="mx-auto max-w-7xl space-y-10 px-8 py-10">
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:space-y-10 md:px-8 md:py-10">
         {!merchant.stripeOnboardingComplete && <OnboardingBanner />}
 
         {/* Stats */}

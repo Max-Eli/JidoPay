@@ -32,7 +32,7 @@ export default async function CreditWalletPage() {
         title="Credit wallet"
         description="Add store credit to a customer's wallet."
       />
-      <div className="mx-auto max-w-2xl px-8 py-10">
+      <div className="mx-auto max-w-2xl px-4 py-6 md:px-8 md:py-10">
         <CreditWalletForm customers={customerList} />
       </div>
     </>

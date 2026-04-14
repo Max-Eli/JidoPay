@@ -28,7 +28,7 @@ export default async function SettingsPage() {
         description="Manage your business profile and payout configuration."
       />
 
-      <div className="mx-auto max-w-3xl space-y-6 px-8 py-10">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <Section
           eyebrow="Profile"
           title="Business details"

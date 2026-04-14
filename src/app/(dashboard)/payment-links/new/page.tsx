@@ -25,7 +25,7 @@ export default async function NewPaymentLinkPage() {
         title="New payment link"
         description="Sell a product or start a subscription. Share the link anywhere."
       />
-      <div className="mx-auto max-w-3xl px-8 py-10">
+      <div className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-10">
         <NewPaymentLinkForm />
       </div>
     </>

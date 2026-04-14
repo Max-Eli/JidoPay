@@ -28,7 +28,7 @@ export default async function PayoutsPage() {
           title="Payouts"
           description="Manage your balance and payout schedule."
         />
-        <div className="mx-auto max-w-3xl px-8 py-10">
+        <div className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-10">
           <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-8">
             <div
               aria-hidden
@@ -67,7 +67,7 @@ export default async function PayoutsPage() {
         description="Manage your balance, payout schedule, and instant transfers."
       />
 
-      <div className="mx-auto max-w-4xl space-y-8 px-8 py-10">
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-6 md:px-8 md:py-10">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-border/60 bg-card p-6">
             <div className="flex items-center gap-3">

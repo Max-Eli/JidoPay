@@ -3,7 +3,7 @@ import { ArrowUpRight, ShieldCheck } from "lucide-react";
 
 export function OnboardingBanner() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-8">
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 md:p-8">
       <div
         aria-hidden
         className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full bg-accent/10 blur-3xl"
@@ -17,7 +17,7 @@ export function OnboardingBanner() {
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               Finish setup
             </p>
-            <h3 className="mt-1 font-display text-2xl">
+            <h3 className="mt-1 font-display text-xl leading-tight md:text-2xl">
               Connect your bank to start accepting payments
             </h3>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">

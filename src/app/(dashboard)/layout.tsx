@@ -2,9 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db, merchants } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { Sidebar } from "@/components/dashboard/sidebar";
-import { AiWidget } from "@/components/dashboard/ai-widget";
-import { Toaster } from "@/components/ui/toaster";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 export default async function DashboardLayout({
   children,
@@ -32,15 +30,5 @@ export default async function DashboardLayout({
     }
   }
 
-  return (
-    <div
-      data-app-ui
-      className="min-h-screen bg-background text-foreground"
-    >
-      <Sidebar />
-      <main className="pl-64">{children}</main>
-      <AiWidget />
-      <Toaster />
-    </div>
-  );
+  return <DashboardShell>{children}</DashboardShell>;
 }

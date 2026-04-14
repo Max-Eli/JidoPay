@@ -32,7 +32,7 @@ export default async function EditPaymentLinkPage({
         title="Edit payment link"
         description="Update details or replace the price by creating a new link."
       />
-      <div className="mx-auto max-w-2xl space-y-6 px-8 py-10">
+      <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <Link
           href="/payment-links"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"

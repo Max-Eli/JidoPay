@@ -57,7 +57,7 @@ export default async function InvoicesPage({
         }
       />
 
-      <div className="mx-auto max-w-7xl px-8 py-10">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
           <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
             <div>

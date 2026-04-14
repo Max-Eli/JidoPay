@@ -15,7 +15,7 @@ export default async function AiPage() {
         title="AI assistant"
         description="Ask anything about your payments, customers, and growth."
       />
-      <div className="mx-auto flex h-[calc(100vh-160px)] max-w-4xl flex-col px-8 py-10">
+      <div className="mx-auto flex h-[calc(100vh-160px)] max-w-4xl flex-col px-4 py-6 md:px-8 md:py-10">
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card">
           <AiChat />
         </div>

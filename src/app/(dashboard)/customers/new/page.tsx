@@ -15,7 +15,7 @@ export default async function NewCustomerPage() {
         title="New customer"
         description="Add a customer manually so you can bill or message them."
       />
-      <div className="mx-auto max-w-2xl px-8 py-10">
+      <div className="mx-auto max-w-2xl px-4 py-6 md:px-8 md:py-10">
         <NewCustomerForm />
       </div>
     </>

@@ -18,6 +18,8 @@ import {
 import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/marketing/logo";
+import { useMobileNav } from "./dashboard-shell";
+import { X } from "lucide-react";
 
 const NAV_SECTIONS = [
   {
@@ -55,12 +57,28 @@ const NAV_SECTIONS = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useUser();
+  const { open, setOpen } = useMobileNav();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border/60 bg-card">
-      {/* Logo */}
-      <div className="flex h-20 items-center border-b border-border/60 px-6">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border/60 bg-card",
+        "transform transition-transform duration-200 ease-out md:translate-x-0",
+        open ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+      )}
+      aria-hidden={!open ? undefined : false}
+    >
+      {/* Logo + mobile close */}
+      <div className="flex h-20 items-center justify-between border-b border-border/60 px-6">
         <Logo />
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Close menu"
+          className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent md:hidden"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Navigation */}

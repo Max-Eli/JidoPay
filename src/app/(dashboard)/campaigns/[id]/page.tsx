@@ -78,7 +78,7 @@ export default async function CampaignDetailPage({
         description={`${isEmail ? "Email" : "SMS"} campaign · ${campaign.audience} audience`}
       />
 
-      <div className="mx-auto max-w-6xl space-y-6 px-8 py-10">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <Link
           href="/campaigns"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"

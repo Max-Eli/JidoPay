@@ -40,7 +40,7 @@ export default async function PaymentLinksPage() {
         actions={<CreatePaymentLinkButton />}
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 px-8 py-10">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         {storefrontLive ? (
           <Link
             href="/settings"

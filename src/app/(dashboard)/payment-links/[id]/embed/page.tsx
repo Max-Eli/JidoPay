@@ -33,7 +33,7 @@ export default async function EmbedSnippetPage({
         title="Embed on your site"
         description="Drop JidoPay checkout into any website."
       />
-      <div className="mx-auto max-w-3xl space-y-6 px-8 py-10">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         <Link
           href="/payment-links"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
