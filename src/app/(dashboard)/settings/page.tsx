@@ -31,7 +31,7 @@ export default async function SettingsPage() {
         <Section
           eyebrow="Profile"
           title="Business details"
-          description="This name appears on your invoices and payment pages."
+          description="The display name your customers see at checkout, on invoices, and in receipts. Use your brand or DBA — not your legal name."
         >
           <SettingsForm
             merchantId={merchant.id}

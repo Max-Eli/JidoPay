@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 import { db, paymentLinks } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Link2, ExternalLink } from "lucide-react";
+import { Link2, ExternalLink, Pencil } from "lucide-react";
+import Link from "next/link";
 import { CreatePaymentLinkButton } from "@/components/dashboard/create-payment-link-button";
 import { CopyLinkButton } from "@/components/dashboard/copy-link-button";
 import { EmbedSnippetButton } from "@/components/dashboard/embed-snippet-button";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { brandedPayUrl } from "@/lib/branded-url";
 
 export const metadata = { title: "Payment Links" };
 
@@ -95,10 +97,17 @@ export default async function PaymentLinksPage() {
                   </div>
                   {link.stripePaymentLinkUrl && (
                     <div className="flex shrink-0 items-center gap-2">
-                      <CopyLinkButton url={link.stripePaymentLinkUrl} />
+                      <CopyLinkButton url={brandedPayUrl(link.id)} />
                       <EmbedSnippetButton linkId={link.id} />
+                      <Link
+                        href={`/payment-links/${link.id}/edit`}
+                        title="Edit link"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-muted-foreground transition-all hover:border-accent/60 hover:text-accent"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
                       <a
-                        href={link.stripePaymentLinkUrl}
+                        href={brandedPayUrl(link.id)}
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Open link"

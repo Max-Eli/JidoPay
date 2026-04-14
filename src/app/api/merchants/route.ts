@@ -4,6 +4,7 @@ import { db, merchants, auditLogs } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { generateId } from "@/lib/utils";
+import { stripe } from "@/lib/stripe";
 
 const updateMerchantSchema = z.object({
   businessName: z.string().max(255).optional(),
@@ -90,6 +91,27 @@ export async function PATCH(req: NextRequest) {
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(merchants.id, userId))
     .returning();
+
+  // Mirror the merchant's display name to their Stripe Connect account so
+  // it shows on hosted checkout (otherwise Stripe falls back to the legal
+  // individual name, which looks unprofessional for solo operators with a
+  // registered DBA).
+  if (
+    parsed.data.businessName !== undefined &&
+    parsed.data.businessName !== before.businessName &&
+    before.stripeAccountId
+  ) {
+    try {
+      await stripe.accounts.update(before.stripeAccountId, {
+        business_profile: { name: parsed.data.businessName },
+      });
+    } catch (err) {
+      console.error(
+        `[merchants] failed to sync businessName to Stripe for ${userId}`,
+        err
+      );
+    }
+  }
 
   const changes: Record<string, { from: unknown; to: unknown }> = {};
   for (const key of Object.keys(parsed.data) as Array<keyof typeof parsed.data>) {

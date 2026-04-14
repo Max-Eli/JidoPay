@@ -46,7 +46,7 @@ export function SettingsForm({ businessName }: SettingsFormProps) {
     <form onSubmit={handleSave} className="space-y-5">
       <div>
         <label className="mb-2 block text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
-          Business name
+          Display name
         </label>
         <input
           type="text"
@@ -56,6 +56,10 @@ export function SettingsForm({ businessName }: SettingsFormProps) {
           maxLength={255}
           className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent"
         />
+        <p className="mt-2 text-xs text-muted-foreground">
+          This overrides your legal name on checkout. Takes effect on new
+          payments immediately.
+        </p>
       </div>
 
       {error && (

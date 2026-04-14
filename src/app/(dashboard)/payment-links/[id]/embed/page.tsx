@@ -6,6 +6,7 @@ import { db, paymentLinks } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { Topbar } from "@/components/dashboard/topbar";
 import { EmbedSnippetPanel } from "@/components/dashboard/embed-snippet-panel";
+import { brandedPayUrl } from "@/lib/branded-url";
 
 export const metadata = { title: "Embed on your site" };
 
@@ -56,10 +57,10 @@ export default async function EmbedSnippetPage({
             </div>
             {link.stripePaymentLinkUrl && (
               <a
-                href={link.stripePaymentLinkUrl}
+                href={brandedPayUrl(link.id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Open hosted checkout"
+                title="Open checkout"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 text-muted-foreground transition-all hover:border-accent/60 hover:text-accent"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
