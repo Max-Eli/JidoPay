@@ -85,6 +85,20 @@ export const campaignAudienceEnum = pgEnum("campaign_audience", [
   "abandoned",
 ]);
 
+// Per-recipient delivery state for a campaign send. Each state is monotonic
+// in practice (queued → sent → delivered → opened → clicked) but bounced /
+// complained / failed can happen from any earlier state.
+export const campaignMessageStatusEnum = pgEnum("campaign_message_status", [
+  "queued",
+  "sent",
+  "delivered",
+  "opened",
+  "clicked",
+  "bounced",
+  "complained",
+  "failed",
+]);
+
 export const walletTxnTypeEnum = pgEnum("wallet_txn_type", [
   "credit",
   "debit",
@@ -341,6 +355,14 @@ export const campaigns = pgTable(
     body: text("body").notNull(),
     sentCount: integer("sent_count").notNull().default(0),
     failedCount: integer("failed_count").notNull().default(0),
+    // Engagement counters updated by the webhook pipeline. Kept as denormalized
+    // roll-ups so the campaigns list doesn't have to aggregate per-message
+    // rows on every render.
+    deliveredCount: integer("delivered_count").notNull().default(0),
+    openedCount: integer("opened_count").notNull().default(0),
+    clickedCount: integer("clicked_count").notNull().default(0),
+    bouncedCount: integer("bounced_count").notNull().default(0),
+    complainedCount: integer("complained_count").notNull().default(0),
     sentAt: timestamp("sent_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -348,6 +370,42 @@ export const campaigns = pgTable(
   (t) => [
     index("campaigns_merchant_id_idx").on(t.merchantId),
     index("campaigns_status_idx").on(t.status),
+  ]
+);
+
+// Per-recipient delivery rows — one per recipient of a campaign send, keyed
+// by the provider message id (Resend "email_id") so webhooks can find the
+// right row and advance it forward through the status chain.
+export const campaignMessages = pgTable(
+  "campaign_messages",
+  {
+    id: text("id").primaryKey(),
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    merchantId: text("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    customerId: text("customer_id").references(() => customers.id, {
+      onDelete: "set null",
+    }),
+    recipient: varchar("recipient", { length: 320 }).notNull(), // email or phone
+    providerMessageId: varchar("provider_message_id", { length: 255 }),
+    status: campaignMessageStatusEnum("status").notNull().default("queued"),
+    errorMessage: text("error_message"),
+    sentAt: timestamp("sent_at"),
+    deliveredAt: timestamp("delivered_at"),
+    firstOpenedAt: timestamp("first_opened_at"),
+    firstClickedAt: timestamp("first_clicked_at"),
+    openCount: integer("open_count").notNull().default(0),
+    clickCount: integer("click_count").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("campaign_messages_campaign_id_idx").on(t.campaignId),
+    index("campaign_messages_merchant_id_idx").on(t.merchantId),
+    index("campaign_messages_provider_id_idx").on(t.providerMessageId),
   ]
 );
 

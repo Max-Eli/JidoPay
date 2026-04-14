@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   db,
   campaigns,
+  campaignMessages,
   customers,
   merchants,
   auditLogs,
@@ -147,7 +148,9 @@ export async function POST(
   }
 
   const [merchant] = await db
-    .select({ businessName: merchants.businessName })
+    .select({
+      businessName: merchants.businessName,
+    })
     .from(merchants)
     .where(eq(merchants.id, userId));
 
@@ -200,23 +203,99 @@ export async function POST(
         })
       : null;
 
+    // Create a pending row first so webhook callbacks can land on it even
+    // if the send Promise hasn't resolved yet (rare, but Resend delivers
+    // webhooks incredibly fast in practice).
+    const messageRowId = generateId("msg");
+
     if (campaign.channel === "email") {
       const footer = unsubUrl
         ? `\n\n—\nUnsubscribe from these emails: ${unsubUrl}`
         : "";
+      await db.insert(campaignMessages).values({
+        id: messageRowId,
+        campaignId: id,
+        merchantId: userId,
+        customerId: recipient.customerId,
+        recipient: recipient.email!,
+        status: "queued",
+      });
+
       const res = await sendEmail({
         to: recipient.email!,
-        subject: campaign.subject ?? "A message from " + (merchant?.businessName ?? "your vendor"),
+        subject:
+          campaign.subject ??
+          "A message from " + (merchant?.businessName ?? "your vendor"),
         text: body + footer,
+        fromName: merchant?.businessName ?? undefined,
+        // Tag with our internal ids so webhook callbacks can be routed back
+        // without needing a provider-id lookup on every event.
+        tags: [
+          { name: "campaign_id", value: id },
+          { name: "message_row_id", value: messageRowId },
+        ],
       });
-      res.ok ? sent++ : failed++;
+
+      if (res.ok) {
+        sent++;
+        await db
+          .update(campaignMessages)
+          .set({
+            status: "sent",
+            providerMessageId: res.id,
+            sentAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(campaignMessages.id, messageRowId));
+      } else {
+        failed++;
+        await db
+          .update(campaignMessages)
+          .set({
+            status: "failed",
+            errorMessage: res.error,
+            updatedAt: new Date(),
+          })
+          .where(eq(campaignMessages.id, messageRowId));
+      }
     } else {
       const footer = " Reply STOP to opt out.";
+      await db.insert(campaignMessages).values({
+        id: messageRowId,
+        campaignId: id,
+        merchantId: userId,
+        customerId: recipient.customerId,
+        recipient: recipient.phone!,
+        status: "queued",
+      });
+
       const res = await sendSms({
         to: recipient.phone!,
         body: body + footer,
       });
-      res.ok ? sent++ : failed++;
+
+      if (res.ok) {
+        sent++;
+        await db
+          .update(campaignMessages)
+          .set({
+            status: "sent",
+            providerMessageId: res.sid,
+            sentAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(campaignMessages.id, messageRowId));
+      } else {
+        failed++;
+        await db
+          .update(campaignMessages)
+          .set({
+            status: "failed",
+            errorMessage: res.error,
+            updatedAt: new Date(),
+          })
+          .where(eq(campaignMessages.id, messageRowId));
+      }
     }
   }
 

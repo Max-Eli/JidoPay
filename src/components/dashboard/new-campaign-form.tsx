@@ -11,6 +11,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toaster";
 
 type Channel = "email" | "sms";
 type Audience = "all" | "repeat" | "inactive" | "abandoned";
@@ -37,7 +38,6 @@ const AUDIENCE_OPTIONS: { value: Audience; label: string; hint: string }[] = [
 export function NewCampaignForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [channel, setChannel] = useState<Channel>("email");
@@ -48,7 +48,6 @@ export function NewCampaignForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     try {
       const res = await fetch("/api/campaigns", {
@@ -64,14 +63,15 @@ export function NewCampaignForm() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Something went wrong");
+        toast.error("Couldn't save campaign", data.error ?? "Please try again.");
         setLoading(false);
         return;
       }
+      toast.success("Campaign saved as draft", "Review and send it when you're ready.");
       router.push("/campaigns");
       router.refresh();
     } catch {
-      setError("Failed to create campaign");
+      toast.error("Connection issue", "We couldn't reach the server. Please try again.");
       setLoading(false);
     }
   }
@@ -215,12 +215,6 @@ export function NewCampaignForm() {
           </Field>
         </div>
       </section>
-
-      {error && (
-        <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm text-red-500">
-          {error}
-        </p>
-      )}
 
       <div className="flex items-center justify-end gap-3">
         <Link

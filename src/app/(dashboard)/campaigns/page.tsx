@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { db, campaigns } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { formatDate } from "@/lib/utils";
-import { Megaphone, Mail, MessageSquare } from "lucide-react";
+import { Megaphone, Mail, MessageSquare, BarChart3 } from "lucide-react";
+import Link from "next/link";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { CreateCampaignButton } from "@/components/dashboard/create-campaign-button";
@@ -98,9 +99,23 @@ export default async function CampaignsPage() {
                       </span>
                     </div>
                   </div>
-                  {c.status === "draft" && (
-                    <SendCampaignButton campaignId={c.id} />
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {c.status === "draft" && (
+                      <SendCampaignButton
+                        campaignId={c.id}
+                        campaignName={c.name}
+                      />
+                    )}
+                    {(c.status === "sent" || c.status === "sending") && (
+                      <Link
+                        href={`/campaigns/${c.id}`}
+                        className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-medium text-foreground transition-all hover:border-accent/60 hover:bg-muted"
+                      >
+                        <BarChart3 className="h-3.5 w-3.5" />
+                        View stats
+                      </Link>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

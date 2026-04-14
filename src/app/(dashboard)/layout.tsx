@@ -4,6 +4,7 @@ import { db, merchants } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { AiWidget } from "@/components/dashboard/ai-widget";
+import { Toaster } from "@/components/ui/toaster";
 
 export default async function DashboardLayout({
   children,
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
       <Sidebar />
       <main className="pl-64">{children}</main>
       <AiWidget />
+      <Toaster />
     </div>
   );
 }
