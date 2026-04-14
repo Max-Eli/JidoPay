@@ -18,7 +18,7 @@ export default async function OnboardingReturnPage() {
 
   if (!merchant?.stripeAccountId) redirect("/dashboard");
 
-  // Check current account status from Stripe
+  // Check current account status with the payments provider.
   const account = await stripe.accounts.retrieve(merchant.stripeAccountId);
 
   const isComplete = account.charges_enabled && account.payouts_enabled;
@@ -47,7 +47,7 @@ export default async function OnboardingReturnPage() {
               You&apos;re all set!
             </h1>
             <p className="mt-2 text-gray-500">
-              Your Stripe account is connected. You can now start accepting
+              Your payout account is connected. You can now start accepting
               payments from your customers.
             </p>
             <Button asChild className="mt-6">
@@ -63,8 +63,8 @@ export default async function OnboardingReturnPage() {
               Almost there
             </h1>
             <p className="mt-2 text-gray-500">
-              Your Stripe account setup isn&apos;t complete yet. You may need
-              to provide additional information.
+              Your payout setup isn&apos;t complete yet. You may need to
+              provide additional information.
             </p>
             <Button asChild className="mt-6" variant="outline">
               <Link href="/onboarding/refresh">Continue Setup</Link>

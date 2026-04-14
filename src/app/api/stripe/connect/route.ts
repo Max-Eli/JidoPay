@@ -99,27 +99,15 @@ export async function POST() {
       publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     });
   } catch (err) {
-    // Surface the real Stripe error so merchants see something useful
-    // instead of a blank 500. Server logs get the full stack.
+    // Keep the full Stripe error in server logs for debugging. Never
+    // leak the raw message to merchants — they shouldn't see Stripe
+    // jargon or anything that suggests the platform isn't our own.
     console.error("[connect] failed to create onboarding session", err);
-
-    if (err instanceof Stripe.errors.StripeError) {
-      return NextResponse.json(
-        {
-          error: err.message,
-          code: err.code ?? null,
-          type: err.type,
-        },
-        { status: err.statusCode ?? 500 }
-      );
-    }
 
     return NextResponse.json(
       {
         error:
-          err instanceof Error
-            ? err.message
-            : "Failed to create onboarding session",
+          "We couldn't start your payout setup. Please try again in a moment — if the problem continues, reach out to support.",
       },
       { status: 500 }
     );
