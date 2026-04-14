@@ -35,7 +35,10 @@ export function ConnectOnboarding() {
       try {
         const res = await fetch("/api/stripe/connect", { method: "POST" });
         if (!res.ok) {
-          throw new Error("Failed to create onboarding session");
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(
+            payload.error ?? "Failed to create onboarding session"
+          );
         }
         const data = (await res.json()) as {
           clientSecret?: string;
