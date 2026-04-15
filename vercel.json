@@ -9,6 +9,15 @@
     },
     "src/app/api/campaigns/[id]/send/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/webhook-retries/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/webhook-retries",
+      "schedule": "* * * * *"
+    }
+  ]
 }

@@ -113,6 +113,26 @@ export const abandonedStatusEnum = pgEnum("abandoned_status", [
   "dismissed",
 ]);
 
+// Outbound merchant webhook events. Mirrors Stripe's event naming so merchants
+// who've integrated Stripe webhooks before have a familiar mental model.
+export const merchantWebhookEventEnum = pgEnum("merchant_webhook_event", [
+  "payment.succeeded",
+  "payment.failed",
+  "payment.refunded",
+  "payment_link.created",
+  "checkout.session.completed",
+  "checkout.session.expired",
+  "subscription.created",
+  "subscription.canceled",
+]);
+
+export const webhookDeliveryStatusEnum = pgEnum("webhook_delivery_status", [
+  "pending",
+  "delivered",
+  "failed",
+  "retrying",
+]);
+
 // ─── Merchants ────────────────────────────────────────────────────────────────
 // One record per signed-up user. clerk_id is the source of truth for identity.
 
@@ -586,6 +606,89 @@ export const paymentLinkRelations = relations(paymentLinks, ({ one }) => ({
   }),
 }));
 
+// ─── Merchant Webhooks ───────────────────────────────────────────────────────
+// Outbound webhooks delivered to merchant servers when events happen on their
+// account (payment succeeded, subscription created, etc.). Each endpoint has
+// a signing secret used for HMAC-SHA256 request signing (same pattern Stripe
+// uses — `t=<ts>,v1=<sig>`) and a whitelist of event types it cares about.
+
+export const merchantWebhooks = pgTable(
+  "merchant_webhooks",
+  {
+    id: text("id").primaryKey(),
+    merchantId: text("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    // Destination URL — must be https in production. Validated at create time.
+    url: text("url").notNull(),
+    // Signing secret — prefix "whsec_" followed by base64url random bytes.
+    // Shown to the merchant exactly once at creation; stored plain so we can
+    // sign outbound requests. (Hashing would mean we couldn't sign.)
+    signingSecret: varchar("signing_secret", { length: 128 }).notNull(),
+    // Optional human label for the merchant to remember where this goes.
+    description: varchar("description", { length: 160 }),
+    // Which events this endpoint receives. Empty array = receive everything.
+    // Kept as text[] rather than the enum array so adding new events later
+    // doesn't require a migration for existing rows.
+    enabledEvents: text("enabled_events").array().notNull().default([]),
+    active: boolean("active").notNull().default(true),
+    // Last-delivery summary for quick dashboard display without joining
+    // deliveries. Updated on every send attempt.
+    lastDeliveryAt: timestamp("last_delivery_at"),
+    lastDeliveryStatus: webhookDeliveryStatusEnum("last_delivery_status"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("merchant_webhooks_merchant_id_idx").on(t.merchantId),
+    index("merchant_webhooks_active_idx").on(t.active),
+  ]
+);
+
+// Per-delivery audit trail. Every attempt (including retries) writes or
+// updates one row keyed by id, so merchants can replay individual events
+// and we can back off failing endpoints without losing history.
+export const webhookDeliveries = pgTable(
+  "webhook_deliveries",
+  {
+    id: text("id").primaryKey(),
+    webhookId: text("webhook_id")
+      .notNull()
+      .references(() => merchantWebhooks.id, { onDelete: "cascade" }),
+    merchantId: text("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    // The event type ("payment.succeeded" etc). Not a foreign key to the
+    // enum since we want older deliveries to survive enum changes.
+    event: varchar("event", { length: 64 }).notNull(),
+    // Logical event id — stable across retries so merchants can dedupe on
+    // their side. Format: "evt_<timestamp><random>".
+    eventId: varchar("event_id", { length: 64 }).notNull(),
+    // The full JSON body that was sent (or will be sent). Stored as text so
+    // we can replay a delivery verbatim and show the raw payload in the UI.
+    payload: text("payload").notNull(),
+    status: webhookDeliveryStatusEnum("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    // HTTP response details from the last attempt. Null until first attempt.
+    responseCode: integer("response_code"),
+    responseBody: text("response_body"), // truncated to ~2KB
+    errorMessage: text("error_message"),
+    // Exponential backoff schedule. Null once terminal (delivered/failed).
+    nextRetryAt: timestamp("next_retry_at"),
+    firstAttemptAt: timestamp("first_attempt_at"),
+    lastAttemptAt: timestamp("last_attempt_at"),
+    deliveredAt: timestamp("delivered_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("webhook_deliveries_webhook_id_idx").on(t.webhookId),
+    index("webhook_deliveries_merchant_id_idx").on(t.merchantId),
+    index("webhook_deliveries_status_idx").on(t.status),
+    index("webhook_deliveries_event_id_idx").on(t.eventId),
+    index("webhook_deliveries_created_at_idx").on(t.createdAt),
+  ]
+);
+
 // ─── Marketing Leads (TCR-compliant SMS opt-in) ──────────────────────────────
 // Captured from the marketing site popup. Every row represents an explicit
 // opt-in to receive marketing text messages from JidoPay and stores the
@@ -639,3 +742,7 @@ export type SavedPaymentMethod = typeof savedPaymentMethods.$inferSelect;
 export type NewSavedPaymentMethod = typeof savedPaymentMethods.$inferInsert;
 export type MarketingLead = typeof marketingLeads.$inferSelect;
 export type NewMarketingLead = typeof marketingLeads.$inferInsert;
+export type MerchantWebhook = typeof merchantWebhooks.$inferSelect;
+export type NewMerchantWebhook = typeof merchantWebhooks.$inferInsert;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type NewWebhookDelivery = typeof webhookDeliveries.$inferInsert;

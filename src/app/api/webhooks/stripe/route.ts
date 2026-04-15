@@ -15,6 +15,7 @@ import {
 } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { generateId, calculateApplicationFee } from "@/lib/utils";
+import { dispatchMerchantWebhook } from "@/lib/merchant-webhooks";
 import type Stripe from "stripe";
 
 // Stripe sends raw body — disable Next.js body parsing
@@ -94,6 +95,13 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         await handleCheckoutCompleted(
           event.data.object as Stripe.Checkout.Session,
+          connectedAccountId
+        );
+        break;
+      }
+      case "charge.refunded": {
+        await handleChargeRefunded(
+          event.data.object as Stripe.Charge,
           connectedAccountId
         );
         break;
@@ -209,6 +217,30 @@ async function handlePaymentSucceeded(
         .where(eq(paymentLinks.id, pi.metadata.paymentLinkId));
     }
   }
+
+  // Fan-out to merchant-facing outbound webhooks. Failures here must not
+  // roll back the Stripe webhook — merchants with broken endpoints should
+  // not block internal bookkeeping, so we swallow and log.
+  try {
+    await dispatchMerchantWebhook({
+      merchantId,
+      event: "payment.succeeded",
+      data: {
+        paymentIntentId: pi.id,
+        amount: pi.amount,
+        currency: pi.currency,
+        applicationFee: appFee,
+        paymentLinkId: pi.metadata?.paymentLinkId ?? null,
+        invoiceId: pi.metadata?.invoiceId ?? null,
+        customerEmail: pi.metadata?.customerEmail ?? null,
+        customerName: pi.metadata?.customerName ?? null,
+        metadata: pi.metadata ?? {},
+        description: pi.description ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[webhook] dispatch payment.succeeded failed", err);
+  }
 }
 
 async function handlePaymentFailed(pi: Stripe.PaymentIntent) {
@@ -216,6 +248,81 @@ async function handlePaymentFailed(pi: Stripe.PaymentIntent) {
     .update(payments)
     .set({ status: "failed", updatedAt: new Date() })
     .where(eq(payments.stripePaymentIntentId, pi.id));
+
+  const merchantId = pi.metadata?.merchantId;
+  if (!merchantId) return;
+  try {
+    await dispatchMerchantWebhook({
+      merchantId,
+      event: "payment.failed",
+      data: {
+        paymentIntentId: pi.id,
+        amount: pi.amount,
+        currency: pi.currency,
+        failureCode: pi.last_payment_error?.code ?? null,
+        failureMessage: pi.last_payment_error?.message ?? null,
+        paymentLinkId: pi.metadata?.paymentLinkId ?? null,
+        customerEmail: pi.metadata?.customerEmail ?? null,
+        metadata: pi.metadata ?? {},
+      },
+    });
+  } catch (err) {
+    console.error("[webhook] dispatch payment.failed failed", err);
+  }
+}
+
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  connectedAccountId: string | null
+) {
+  // Find the payment row by PI id so we can update its status and look up
+  // the merchant for outbound webhook dispatch.
+  const piId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id ?? null;
+
+  let merchantId: string | null = null;
+  if (piId) {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripePaymentIntentId, piId));
+    if (payment) {
+      merchantId = payment.merchantId;
+      await db
+        .update(payments)
+        .set({ status: "refunded", updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+    }
+  }
+
+  if (!merchantId && connectedAccountId) {
+    const [m] = await db
+      .select()
+      .from(merchants)
+      .where(eq(merchants.stripeAccountId, connectedAccountId));
+    merchantId = m?.id ?? null;
+  }
+  if (!merchantId) return;
+
+  try {
+    await dispatchMerchantWebhook({
+      merchantId,
+      event: "payment.refunded",
+      data: {
+        chargeId: charge.id,
+        paymentIntentId: piId,
+        amountRefunded: charge.amount_refunded,
+        currency: charge.currency,
+        fullyRefunded: charge.refunded,
+        reason: charge.refunds?.data?.[0]?.reason ?? null,
+        customerEmail: charge.billing_details?.email ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[webhook] dispatch payment.refunded failed", err);
+  }
 }
 
 async function handleCheckoutExpired(
@@ -250,6 +357,24 @@ async function handleCheckoutExpired(
       status: "pending",
     })
     .onConflictDoNothing();
+
+  try {
+    await dispatchMerchantWebhook({
+      merchantId,
+      event: "checkout.session.expired",
+      data: {
+        sessionId: session.id,
+        amountTotal: session.amount_total,
+        currency: session.currency,
+        paymentLinkId,
+        customerEmail: session.customer_details?.email ?? null,
+        customerName: session.customer_details?.name ?? null,
+        metadata: session.metadata ?? {},
+      },
+    });
+  } catch (err) {
+    console.error("[webhook] dispatch checkout.session.expired failed", err);
+  }
 }
 
 async function handleCheckoutCompleted(
@@ -262,6 +387,48 @@ async function handleCheckoutCompleted(
     .update(abandonedCheckouts)
     .set({ status: "recovered", recoveredAt: new Date() })
     .where(eq(abandonedCheckouts.stripeSessionId, session.id));
+
+  // Resolve the merchant (from metadata first, then from connected account).
+  // We need this for both the outbound webhook dispatch and the saved-PM
+  // mirror below.
+  let merchantId = (session.metadata?.merchantId as string | undefined) ?? null;
+  if (!merchantId && connectedAccountId) {
+    const [m] = await db
+      .select()
+      .from(merchants)
+      .where(eq(merchants.stripeAccountId, connectedAccountId));
+    merchantId = m?.id ?? null;
+  }
+
+  if (merchantId) {
+    // Outbound webhook to merchant servers. This is the event that the
+    // SVA LMS (and any other integrator) listens to for enrollment —
+    // checkout.session.completed is the first event in the Stripe flow that
+    // reliably carries customer_details.email, so it's the right hook for
+    // "grant access now that they've paid".
+    try {
+      const paymentLinkId =
+        (session.metadata?.paymentLinkId as string | undefined) ?? null;
+      await dispatchMerchantWebhook({
+        merchantId,
+        event: "checkout.session.completed",
+        data: {
+          sessionId: session.id,
+          amountTotal: session.amount_total,
+          currency: session.currency,
+          paymentLinkId,
+          customerEmail: session.customer_details?.email ?? null,
+          customerName: session.customer_details?.name ?? null,
+          customerPhone: session.customer_details?.phone ?? null,
+          metadata: session.metadata ?? {},
+          mode: session.mode,
+          paymentStatus: session.payment_status,
+        },
+      });
+    } catch (err) {
+      console.error("[webhook] dispatch checkout.session.completed failed", err);
+    }
+  }
 
   // One-click pay: if the session saved a payment method for future off-session
   // use, mirror it into saved_payment_methods so returning customers can skip
