@@ -83,7 +83,10 @@
     );
   }
 
-  function openModal(linkId, opts) {
+  // Renders the modal shell and returns the iframe so the caller can set src.
+  // Shared between link-based checkout (openModal) and direct-URL checkout
+  // (openCheckoutUrl) so the loading, close, and escape behavior stay in sync.
+  function renderModalShell() {
     injectStyles();
     closeModal();
 
@@ -113,16 +116,6 @@
       "payment *; clipboard-write; publickey-credentials-get *"
     );
     iframe.setAttribute("referrerpolicy", "origin");
-
-    var params = [];
-    if (opts && opts.theme) params.push("theme=" + encodeURIComponent(opts.theme));
-    if (opts && opts.autoload) params.push("autoload=1");
-    if (opts && opts.email) params.push("email=" + encodeURIComponent(opts.email));
-    if (opts && opts.clientRef)
-      params.push("client_ref=" + encodeURIComponent(opts.clientRef));
-    var qs = params.length ? "?" + params.join("&") : "";
-    iframe.src = ORIGIN + "/embed/" + encodeURIComponent(linkId) + qs;
-
     iframe.addEventListener("load", function () {
       loading.style.display = "none";
     });
@@ -144,20 +137,57 @@
     document.body.style.overflow = "hidden";
     modal.__prevOverflow = prevOverflow;
 
-    function dismiss() {
-      closeModal();
-    }
-
-    closeBtn.addEventListener("click", dismiss);
+    closeBtn.addEventListener("click", closeModal);
     modal.addEventListener("click", function (e) {
-      if (e.target === modal) dismiss();
+      if (e.target === modal) closeModal();
     });
     document.addEventListener("keydown", function escListener(e) {
       if (e.key === "Escape") {
-        dismiss();
+        closeModal();
         document.removeEventListener("keydown", escListener);
       }
     });
+
+    return iframe;
+  }
+
+  function openModal(linkId, opts) {
+    var iframe = renderModalShell();
+
+    var params = [];
+    if (opts && opts.theme) params.push("theme=" + encodeURIComponent(opts.theme));
+    if (opts && opts.autoload) params.push("autoload=1");
+    if (opts && opts.email) params.push("email=" + encodeURIComponent(opts.email));
+    if (opts && opts.clientRef)
+      params.push("client_ref=" + encodeURIComponent(opts.clientRef));
+    var qs = params.length ? "?" + params.join("&") : "";
+    iframe.src = ORIGIN + "/embed/" + encodeURIComponent(linkId) + qs;
+  }
+
+  // Opens an arbitrary Stripe Payment Link URL in the JidoPay modal. Used by
+  // the /api/v1/checkout flow where the URL is minted server-side per
+  // customer and can't be represented as a static data-jidopay link id.
+  //
+  // We only accept buy.stripe.com URLs — otherwise a malicious script on the
+  // merchant's page could trick the embed into iframing arbitrary origins.
+  function openCheckoutUrl(url) {
+    if (!url || typeof url !== "string") return;
+    var parsed;
+    try {
+      parsed = new URL(url);
+    } catch (_) {
+      console.error("[JidoPay] openCheckout: invalid URL", url);
+      return;
+    }
+    if (parsed.hostname !== "buy.stripe.com") {
+      console.error(
+        "[JidoPay] openCheckout: only buy.stripe.com URLs are allowed",
+        parsed.hostname
+      );
+      return;
+    }
+    var iframe = renderModalShell();
+    iframe.src = url;
   }
 
   function closeModal() {
@@ -199,13 +229,19 @@
   // Delegate clicks on the document so dynamically-added buttons work.
   document.addEventListener("click", handleClick, true);
 
-  // Programmatic API: window.JidoPay.open(linkId, { theme, autoload })
-  // Use this from SPAs when you can't rely on a click on a data-jidopay
-  // element — e.g. after a server-side step like account creation.
+  // Programmatic API:
+  //   JidoPay.open(linkId, opts)             — open a pre-created payment link
+  //   JidoPay.openCheckout({ url })          — open a dynamic /api/v1/checkout
+  //                                             session URL in the modal
+  //   JidoPay.close()                        — dismiss the modal
   window.JidoPay = {
     open: function (linkId, opts) {
       if (!linkId) return;
       openModal(String(linkId), opts || {});
+    },
+    openCheckout: function (opts) {
+      if (!opts || !opts.url) return;
+      openCheckoutUrl(String(opts.url));
     },
     close: closeModal,
   };

@@ -689,6 +689,39 @@ export const webhookDeliveries = pgTable(
   ]
 );
 
+// ─── Merchant API Keys ───────────────────────────────────────────────────────
+// Server-to-server authentication for the v1 API. Merchants generate one or
+// more keys from their dashboard and use them as Bearer tokens to call
+// endpoints like POST /api/v1/checkout that mint ephemeral Stripe sessions on
+// their behalf. We store only a SHA-256 hash of the key so a database leak
+// can't be replayed; the plaintext is shown once at creation.
+
+export const merchantApiKeys = pgTable(
+  "merchant_api_keys",
+  {
+    id: text("id").primaryKey(),
+    merchantId: text("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    // Short human label ("Production", "Staging", etc) so merchants can tell
+    // keys apart in the UI.
+    name: varchar("name", { length: 80 }).notNull(),
+    // First 12 chars of the plaintext key (e.g. "jp_live_9fkZ") for display.
+    // Not sensitive on its own — just enough to identify which key is which.
+    prefix: varchar("prefix", { length: 20 }).notNull(),
+    // SHA-256 hex hash of the full plaintext key. This is what we compare
+    // against on every authenticated request.
+    hashedKey: varchar("hashed_key", { length: 128 }).notNull(),
+    lastUsedAt: timestamp("last_used_at"),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("merchant_api_keys_merchant_id_idx").on(t.merchantId),
+    unique("merchant_api_keys_hashed_key_unique").on(t.hashedKey),
+  ]
+);
+
 // ─── Marketing Leads (TCR-compliant SMS opt-in) ──────────────────────────────
 // Captured from the marketing site popup. Every row represents an explicit
 // opt-in to receive marketing text messages from JidoPay and stores the
@@ -729,6 +762,8 @@ export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
 export type PaymentLink = typeof paymentLinks.$inferSelect;
 export type NewPaymentLink = typeof paymentLinks.$inferInsert;
+export type MerchantApiKey = typeof merchantApiKeys.$inferSelect;
+export type NewMerchantApiKey = typeof merchantApiKeys.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type Campaign = typeof campaigns.$inferSelect;
 export type NewCampaign = typeof campaigns.$inferInsert;

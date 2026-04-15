@@ -406,6 +406,40 @@ async function handleCheckoutCompleted(
     // checkout.session.completed is the first event in the Stripe flow that
     // reliably carries customer_details.email, so it's the right hook for
     // "grant access now that they've paid".
+    //
+    // Line items are NOT included on Stripe's session object by default;
+    // they have to be fetched via listLineItems on the connected account.
+    // We fetch them here so merchants who built a multi-item checkout via
+    // /api/v1/checkout can read the full cart out of one webhook payload
+    // instead of making a second API call.
+    let lineItems: {
+      description: string | null;
+      quantity: number | null;
+      amount_subtotal: number | null;
+      amount_total: number | null;
+      currency: string | null;
+      price_id: string | null;
+    }[] = [];
+    if (connectedAccountId && session.id) {
+      try {
+        const items = await stripe.checkout.sessions.listLineItems(
+          session.id,
+          { limit: 100 },
+          { stripeAccount: connectedAccountId }
+        );
+        lineItems = items.data.map((li) => ({
+          description: li.description ?? null,
+          quantity: li.quantity ?? null,
+          amount_subtotal: li.amount_subtotal ?? null,
+          amount_total: li.amount_total ?? null,
+          currency: li.currency ?? null,
+          price_id: typeof li.price === "string" ? li.price : li.price?.id ?? null,
+        }));
+      } catch (err) {
+        console.error("[webhook] listLineItems failed", err);
+      }
+    }
+
     try {
       const paymentLinkId =
         (session.metadata?.paymentLinkId as string | undefined) ?? null;
@@ -417,11 +451,16 @@ async function handleCheckoutCompleted(
           amountTotal: session.amount_total,
           currency: session.currency,
           paymentLinkId,
+          // Echo the dynamic-checkout id back to merchants so they can
+          // correlate this webhook with their /api/v1/checkout response.
+          jidopayCheckoutId:
+            (session.metadata?.jidopayCheckoutId as string | undefined) ?? null,
           clientReferenceId: session.client_reference_id ?? null,
           customerEmail: session.customer_details?.email ?? null,
           customerName: session.customer_details?.name ?? null,
           customerPhone: session.customer_details?.phone ?? null,
           metadata: session.metadata ?? {},
+          lineItems,
           mode: session.mode,
           paymentStatus: session.payment_status,
         },
