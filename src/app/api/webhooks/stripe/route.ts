@@ -417,6 +417,7 @@ async function handleCheckoutCompleted(
           amountTotal: session.amount_total,
           currency: session.currency,
           paymentLinkId,
+          clientReferenceId: session.client_reference_id ?? null,
           customerEmail: session.customer_details?.email ?? null,
           customerName: session.customer_details?.name ?? null,
           customerPhone: session.customer_details?.phone ?? null,

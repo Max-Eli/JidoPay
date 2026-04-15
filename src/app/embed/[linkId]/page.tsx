@@ -29,10 +29,15 @@ export default async function EmbedCheckoutPage({
   searchParams,
 }: {
   params: Promise<{ linkId: string }>;
-  searchParams: Promise<{ theme?: string; autoload?: string }>;
+  searchParams: Promise<{
+    theme?: string;
+    autoload?: string;
+    email?: string;
+    client_ref?: string;
+  }>;
 }) {
   const { linkId } = await params;
-  const { autoload } = await searchParams;
+  const { autoload, email, client_ref: clientRef } = await searchParams;
 
   const [row] = await db
     .select({
@@ -113,6 +118,8 @@ export default async function EmbedCheckoutPage({
                 <EmbedCheckoutButton
                   url={link.stripePaymentLinkUrl!}
                   autoload={autoload === "1"}
+                  prefillEmail={email ?? null}
+                  clientReferenceId={clientRef ?? null}
                 />
                 <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                   <ShieldCheck className="h-3.5 w-3.5" />

@@ -117,6 +117,9 @@
     var params = [];
     if (opts && opts.theme) params.push("theme=" + encodeURIComponent(opts.theme));
     if (opts && opts.autoload) params.push("autoload=1");
+    if (opts && opts.email) params.push("email=" + encodeURIComponent(opts.email));
+    if (opts && opts.clientRef)
+      params.push("client_ref=" + encodeURIComponent(opts.clientRef));
     var qs = params.length ? "?" + params.join("&") : "";
     iframe.src = ORIGIN + "/embed/" + encodeURIComponent(linkId) + qs;
 
@@ -195,4 +198,15 @@
 
   // Delegate clicks on the document so dynamically-added buttons work.
   document.addEventListener("click", handleClick, true);
+
+  // Programmatic API: window.JidoPay.open(linkId, { theme, autoload })
+  // Use this from SPAs when you can't rely on a click on a data-jidopay
+  // element — e.g. after a server-side step like account creation.
+  window.JidoPay = {
+    open: function (linkId, opts) {
+      if (!linkId) return;
+      openModal(String(linkId), opts || {});
+    },
+    close: closeModal,
+  };
 })();
