@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Copy,
-  Eye,
-  EyeOff,
   Loader2,
   Plus,
   RefreshCw,
   Send,
+  ShieldCheck,
   Trash2,
   Zap,
+  AlertTriangle,
   AlertCircle,
   CircleCheck,
   CircleDot,
@@ -94,9 +94,9 @@ export function WebhooksManager() {
   return (
     <div className="space-y-6">
       {revealSecret && (
-        <SecretRevealBanner
+        <SecretRevealDialog
           secret={revealSecret.secret}
-          onDismiss={() => setRevealSecret(null)}
+          onAcknowledge={() => setRevealSecret(null)}
         />
       )}
 
@@ -778,76 +778,144 @@ function CreateModal({
   );
 }
 
-function SecretRevealBanner({
+// Blocking reveal dialog for the webhook signing secret. Matches the API
+// key reveal: plaintext lives in a readonly input that auto-selects on
+// mount, clipboard copy has an execCommand fallback, and the merchant must
+// tick an acknowledgement checkbox before the Done button enables.
+function SecretRevealDialog({
   secret,
-  onDismiss,
+  onAcknowledge,
 }: {
   secret: string;
-  onDismiss: () => void;
+  onAcknowledge: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const [visible, setVisible] = useState(true);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function copy() {
+  useEffect(() => {
+    // Pre-select so Cmd/Ctrl+C works the moment the dialog opens.
+    inputRef.current?.select();
+  }, []);
+
+  const copy = async () => {
     try {
-      await navigator.clipboard.writeText(secret);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(secret);
+      } else {
+        inputRef.current?.select();
+        document.execCommand("copy");
+      }
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      toast.success("Signing secret copied to clipboard");
+      setTimeout(() => setCopied(false), 2500);
     } catch {
-      toast.error("Copy failed");
+      inputRef.current?.select();
+      toast.error("Couldn't copy automatically — press Cmd/Ctrl+C to copy");
     }
-  }
+  };
 
   return (
-    <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-base">Signing secret — shown once</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Copy this secret into your server&apos;s environment variables now.
-            You won&apos;t see it again. If you lose it, rotate to generate a
-            new one.
-          </p>
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-2.5">
-            <code className="min-w-0 flex-1 break-all font-mono text-xs">
-              {visible ? secret : "whsec_" + "•".repeat(Math.max(0, secret.length - 6))}
-            </code>
-            <button
-              type="button"
-              onClick={() => setVisible((v) => !v)}
-              className="shrink-0 rounded-lg border border-border/60 p-1.5 text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent"
-              title={visible ? "Hide" : "Show"}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="webhook-secret-reveal-title"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm"
+    >
+      <div className="w-full max-w-xl rounded-2xl border border-accent/40 bg-card p-7 shadow-2xl">
+        <div className="mb-5 flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3
+              id="webhook-secret-reveal-title"
+              className="font-display text-xl text-foreground"
             >
-              {visible ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
-            </button>
+              Copy your webhook signing secret
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This is the only time the secret will be shown. Store it in your server&rsquo;s environment variables (typically as{" "}
+              <code className="rounded bg-muted/50 px-1 py-0.5 font-mono text-[11px]">
+                JIDOPAY_WEBHOOK_SECRET
+              </code>
+              ) before closing this dialog. If you lose it, rotate from the endpoint row to generate a new one.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-4 space-y-2">
+          <label
+            htmlFor="webhook-secret-reveal-input"
+            className="block text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground"
+          >
+            Signing secret
+          </label>
+          <div className="flex items-stretch gap-2">
+            <input
+              id="webhook-secret-reveal-input"
+              ref={inputRef}
+              readOnly
+              value={secret}
+              onFocus={(e) => e.currentTarget.select()}
+              onClick={(e) => e.currentTarget.select()}
+              className="min-w-0 flex-1 rounded-xl border border-border/60 bg-background px-4 py-3 font-mono text-sm text-foreground outline-none focus:border-accent/60"
+              aria-label="Webhook signing secret"
+            />
             <button
               type="button"
               onClick={copy}
-              className="shrink-0 rounded-lg border border-border/60 p-1.5 text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent"
-              title="Copy"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border/60 bg-background px-5 text-sm font-medium transition-all hover:border-accent/60 hover:text-accent"
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                <Check className="h-4 w-4 text-emerald-500" />
               ) : (
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="h-4 w-4" />
               )}
+              {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-              I&apos;ve saved it — dismiss
-            </button>
+          <p className="text-[11px] text-muted-foreground">
+            Tip: click the field to select the full secret, then press{" "}
+            <kbd className="rounded border border-border/60 bg-muted/40 px-1 font-mono text-[10px]">
+              ⌘C
+            </kbd>{" "}
+            /{" "}
+            <kbd className="rounded border border-border/60 bg-muted/40 px-1 font-mono text-[10px]">
+              Ctrl+C
+            </kbd>
+            .
+          </p>
+        </div>
+
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Treat this like a password.</span>{" "}
+            Your server uses it to verify that every incoming webhook actually came from JidoPay. If it leaks, rotate it immediately.
           </div>
         </div>
+
+        <label className="mb-4 flex cursor-pointer select-none items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-sm">
+          <input
+            type="checkbox"
+            checked={acknowledged}
+            onChange={(e) => setAcknowledged(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
+          />
+          <span className="text-foreground">
+            I&rsquo;ve copied and stored this secret somewhere safe. I understand it won&rsquo;t be shown again.
+          </span>
+        </label>
+
+        <button
+          type="button"
+          disabled={!acknowledged}
+          onClick={onAcknowledge}
+          className="w-full rounded-full bg-foreground px-5 py-3 text-sm font-medium text-background transition-all hover:scale-[1.01] hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+        >
+          Done — close this dialog
+        </button>
       </div>
     </div>
   );
