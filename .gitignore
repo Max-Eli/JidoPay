@@ -39,3 +39,6 @@ next-env.d.ts
 
 # drizzle generated migrations
 /drizzle
+
+# clerk configuration (can include secrets)
+/.clerk/

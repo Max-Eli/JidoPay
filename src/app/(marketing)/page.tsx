@@ -16,6 +16,7 @@ import {
   MessageCircle,
   TrendingUp,
   Send,
+  Store,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { Parallax } from "@/components/motion/parallax";
@@ -38,19 +39,19 @@ export default function HomePage() {
 
           <Reveal delay={0.12}>
             <h1 className="mt-8 max-w-5xl font-display text-display-xl">
-              Payments,
+              Storefront, payments,
               <br />
-              <em className="text-accent">reimagined</em> for
+              and <em className="text-accent">customer retention</em>.
               <br />
-              modern business.
+              One platform.
             </h1>
           </Reveal>
 
           <Reveal delay={0.24}>
             <p className="mt-10 max-w-xl text-lg leading-relaxed text-muted-foreground">
-              JidoPay is the unified platform for accepting payments, sending
-              invoices, and managing customers. Beautifully designed. Relentlessly
-              secure.
+              Everything new businesses need to launch and grow online —
+              storefront, payment links, invoicing, and built-in customer
+              retargeting in a single platform.
             </p>
           </Reveal>
 
@@ -60,7 +61,7 @@ export default function HomePage() {
                 href="/sign-up"
                 className="group inline-flex items-center gap-2 rounded-full bg-foreground px-7 py-4 text-sm font-medium text-background transition-all hover:scale-[1.02] hover:bg-foreground/90"
               >
-                Start accepting payments
+                Start your business
                 <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </Link>
               <Link
@@ -111,9 +112,9 @@ export default function HomePage() {
             </div>
           </Reveal>
           <Reveal direction="up" delay={0.1} className="px-6 py-10 md:px-10">
-            <div className="font-display text-4xl md:text-5xl">24/7</div>
+            <div className="font-display text-4xl md:text-5xl">All-in-one</div>
             <div className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">
-              Uptime monitoring
+              Business platform
             </div>
           </Reveal>
           <Reveal direction="up" delay={0.2} className="px-6 py-10 md:px-10">
@@ -185,6 +186,118 @@ export default function HomePage() {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Storefront ────────────────────────────────────────────── */}
+      <section className="py-32 lg:py-40">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
+            {/* Copy — left */}
+            <div>
+              <Reveal direction="right">
+                <div className="mb-6 flex items-center gap-2">
+                  <span className="h-px w-8 bg-foreground/40" />
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Storefront
+                  </span>
+                </div>
+              </Reveal>
+              <Reveal direction="right" delay={0.1}>
+                <h2 className="font-display text-display-lg">
+                  Your shop.
+                  <br />
+                  Your URL.
+                  <br />
+                  <em className="text-accent">Live in minutes</em>.
+                </h2>
+              </Reveal>
+              <Reveal direction="right" delay={0.2}>
+                <p className="mt-8 max-w-md text-muted-foreground">
+                  Launch a hosted storefront at jidopay.com/shop/your-handle.
+                  Every product you add is listed automatically — no website
+                  to build, no code to write. Share one link and start taking
+                  orders.
+                </p>
+              </Reveal>
+              <ul className="mt-8 space-y-3">
+                {STOREFRONT_CAPABILITIES.map((item, idx) => (
+                  <Reveal key={item} delay={0.3 + idx * 0.08} direction="right" as="li">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/10">
+                        <Check className="h-3 w-3 text-accent" />
+                      </div>
+                      {item}
+                    </div>
+                  </Reveal>
+                ))}
+              </ul>
+            </div>
+
+            {/* Mock — right */}
+            <Reveal direction="left" delay={0.15}>
+              <div className="relative">
+                <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_24px_80px_-20px_rgba(0,0,0,0.15)] transition-transform hover:-translate-y-1">
+                  {/* Browser-ish URL bar */}
+                  <div className="mb-6 flex items-center gap-3 rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+                    <div className="flex gap-1">
+                      <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                      <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                      <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                    </div>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      jidopay.com/shop/yourstore
+                    </span>
+                  </div>
+
+                  {/* Storefront header */}
+                  <div className="mb-6 border-b border-border/40 pb-5 text-center">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+                      <Store className="h-4 w-4 text-accent" />
+                    </div>
+                    <div className="font-display text-lg">Your Store</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      Handcrafted goods, shipped weekly
+                    </div>
+                  </div>
+
+                  {/* Product grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { name: "Espresso Blend", price: "$24" },
+                      { name: "Cold Brew", price: "$18" },
+                      { name: "Tasting Set", price: "$48" },
+                      { name: "Subscription", price: "$120/mo" },
+                    ].map((p) => (
+                      <div
+                        key={p.name}
+                        className="rounded-xl border border-border/60 bg-background p-3"
+                      >
+                        <div className="mb-3 h-16 rounded-md bg-muted/60" />
+                        <div className="font-display text-xs">{p.name}</div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {p.price}
+                          </span>
+                          <span className="rounded-full bg-foreground px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider text-background">
+                            Buy
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Floating "Live" badge */}
+                <div className="absolute -right-4 -top-4 flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.15)]">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                  <span className="font-mono text-[10px] uppercase tracking-wider">
+                    Live
+                  </span>
+                </div>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -623,15 +736,16 @@ export default function HomePage() {
           <div className="mx-auto max-w-3xl">
             <Reveal>
               <h2 className="font-display text-display-lg">
-                Ready to get paid,
+                Ready to
                 <br />
-                <em className="text-accent">beautifully</em>?
+                <em className="text-accent">launch</em>?
               </h2>
             </Reveal>
             <Reveal delay={0.15}>
               <p className="mx-auto mt-8 max-w-xl text-background/70">
-                Join the businesses already accepting payments with JidoPay. No
-                monthly fees. No setup. Just elegant, powerful payments.
+                Join the businesses building on JidoPay. No monthly fees. No
+                setup. Your storefront, payments, and growth tools — all in
+                one platform.
               </p>
             </Reveal>
             <Reveal delay={0.3}>
@@ -640,7 +754,7 @@ export default function HomePage() {
                   href="/sign-up"
                   className="group inline-flex items-center gap-2 rounded-full bg-background px-8 py-4 text-sm font-medium text-foreground transition-all hover:scale-[1.02] hover:bg-background/90"
                 >
-                  Start accepting payments
+                  Start your business
                   <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                 </Link>
                 <Link
@@ -726,6 +840,13 @@ const FEATURES = [
       "End-to-end encryption, PCI compliance, and fraud protection. Your customers&rsquo; data is safe.",
     icon: Shield,
   },
+];
+
+const STOREFRONT_CAPABILITIES = [
+  "Branded URL with your business handle",
+  "Auto-syncs with every product you add",
+  "Mobile-first and conversion-optimized",
+  "No website needed — share one link",
 ];
 
 const AI_CAPABILITIES = [

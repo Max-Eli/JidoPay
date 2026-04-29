@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { db, merchants, payments, invoices, customers } from "@/lib/db";
+import { db, merchants, payments, invoices, customers, paymentLinks } from "@/lib/db";
 import { eq, and, gte, sum, count, desc } from "drizzle-orm";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { OnboardingBanner } from "@/components/dashboard/onboarding-banner";
+import { GetStarted, type GetStartedStep } from "@/components/dashboard/get-started";
 import { Topbar } from "@/components/dashboard/topbar";
 
 export const metadata = { title: "Dashboard" };
@@ -66,6 +67,11 @@ export default async function DashboardPage() {
     .from(customers)
     .where(eq(customers.merchantId, userId));
 
+  const [paymentLinkCountResult] = await db
+    .select({ count: count() })
+    .from(paymentLinks)
+    .where(eq(paymentLinks.merchantId, userId));
+
   const recentPayments = await db
     .select()
     .from(payments)
@@ -85,6 +91,48 @@ export default async function DashboardPage() {
   const totalPayments = paymentCountResult?.count ?? 0;
   const pendingInvoices = invoiceCountResult?.count ?? 0;
   const totalCustomers = customerCountResult?.count ?? 0;
+  const totalPaymentLinks = paymentLinkCountResult?.count ?? 0;
+
+  // The Get Started checklist appears for newly-onboarded merchants who
+  // have finished Stripe Connect but haven't received their first payment.
+  // Once any payment lands the card disappears — at that point the merchant
+  // is past the "first run" phase and the regular dashboard surface is more
+  // useful than a setup checklist.
+  const showGetStarted =
+    merchant.stripeOnboardingComplete && totalPayments === 0;
+
+  const getStartedSteps: GetStartedStep[] = showGetStarted
+    ? [
+        {
+          id: "business-name",
+          title: "Add your business name",
+          description:
+            "Shown to customers at checkout, on receipts, and on your storefront.",
+          href: "/settings",
+          cta: "Add name",
+          done: !!merchant.businessName && merchant.businessName.length > 0,
+        },
+        {
+          id: "first-product",
+          title: "Create your first product",
+          description:
+            "Every product becomes a payment link you can share or embed.",
+          href: "/payment-links/new",
+          cta: "Create",
+          done: totalPaymentLinks > 0,
+        },
+        {
+          id: "storefront",
+          title: "Launch your storefront",
+          description:
+            "Publish a hosted shop page that lists every product you sell.",
+          href: "/storefront",
+          cta: "Set up",
+          done:
+            !!merchant.storefrontEnabled && !!merchant.storefrontSlug,
+        },
+      ]
+    : [];
 
   const STATS = [
     {
@@ -122,6 +170,8 @@ export default async function DashboardPage() {
 
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:space-y-10 md:px-8 md:py-10">
         {!merchant.stripeOnboardingComplete && <OnboardingBanner />}
+
+        {showGetStarted && <GetStarted steps={getStartedSteps} />}
 
         {/* Stats */}
         <section>
@@ -172,7 +222,7 @@ export default async function DashboardPage() {
                 </div>
                 <p className="text-sm font-medium">No payments yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Create a payment link to start getting paid.
+                  Transactions appear here as your customers start paying.
                 </p>
               </div>
             ) : (
@@ -226,9 +276,15 @@ export default async function DashboardPage() {
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-muted/40">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium">All caught up</p>
+                <p className="text-sm font-medium">
+                  {pendingInvoices === 0 && totalPayments === 0
+                    ? "No invoices yet"
+                    : "All caught up"}
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  No invoices are awaiting payment.
+                  {pendingInvoices === 0 && totalPayments === 0
+                    ? "Send your first invoice to bill a customer directly."
+                    : "No invoices are awaiting payment."}
                 </p>
               </div>
             ) : (

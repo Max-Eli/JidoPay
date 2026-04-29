@@ -43,7 +43,7 @@ export default async function PaymentLinksPage() {
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
         {storefrontLive ? (
           <Link
-            href="/settings"
+            href="/storefront"
             className="group flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/5 px-6 py-5 transition-colors hover:border-accent/60 hover:bg-accent/10"
           >
             <div className="flex items-center gap-4">
@@ -66,7 +66,7 @@ export default async function PaymentLinksPage() {
           </Link>
         ) : (
           <Link
-            href="/settings"
+            href="/storefront"
             className="group flex items-center justify-between gap-4 rounded-2xl border border-dashed border-border/60 bg-card/60 px-6 py-5 transition-colors hover:border-accent/60 hover:bg-card"
           >
             <div className="flex items-center gap-4">

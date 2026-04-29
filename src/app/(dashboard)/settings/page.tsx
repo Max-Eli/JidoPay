@@ -1,11 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, Zap, Key } from "lucide-react";
+import { ArrowUpRight, Zap, Key, Store } from "lucide-react";
 import { db, merchants } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { SettingsForm } from "@/components/dashboard/settings-form";
-import { StorefrontForm } from "@/components/dashboard/storefront-form";
 import { Topbar } from "@/components/dashboard/topbar";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { FeatureToggle } from "@/components/dashboard/feature-toggle";
@@ -44,14 +43,28 @@ export default async function SettingsPage() {
 
         <Section
           eyebrow="Storefront"
-          title="Your public shop page"
-          description="A zero-code catalog page at jidopay.com/shop/your-handle that lists every active payment link. Share the link on social, in your bio, or in texts — no website needed."
+          title="Public shop page"
+          description="Your hosted catalog at jidopay.com/shop/your-handle. Lists every active payment link automatically."
         >
-          <StorefrontForm
-            initialSlug={merchant.storefrontSlug ?? ""}
-            initialTagline={merchant.storefrontTagline ?? ""}
-            initialEnabled={merchant.storefrontEnabled}
-          />
+          <Link
+            href="/storefront"
+            className="group flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3 transition-colors hover:border-accent/60 hover:bg-accent/5"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background">
+                <Store className="h-4 w-4 text-accent" />
+              </div>
+              <div>
+                <p className="font-display text-sm">Manage storefront</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {merchant.storefrontEnabled && merchant.storefrontSlug
+                    ? `Live at jidopay.com/shop/${merchant.storefrontSlug}`
+                    : "Choose a handle, write a tagline, go live."}
+                </p>
+              </div>
+            </div>
+            <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent" />
+          </Link>
         </Section>
 
         <Section

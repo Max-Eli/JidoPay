@@ -14,6 +14,8 @@ import {
   Wallet,
   ShoppingCart,
   Landmark,
+  Store,
+  Sparkles,
 } from "lucide-react";
 import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,7 @@ const NAV_SECTIONS = [
     label: "Overview",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/storefront", label: "Storefront", icon: Store },
     ],
   },
   {
@@ -44,6 +47,7 @@ const NAV_SECTIONS = [
       { href: "/campaigns", label: "Campaigns", icon: Megaphone },
       { href: "/recovery", label: "Cart Recovery", icon: ShoppingCart },
       { href: "/wallet", label: "Wallets", icon: Wallet },
+      { href: "/ai", label: "AI Assistant", icon: Sparkles },
     ],
   },
   {
